@@ -48,12 +48,10 @@ local function paramsForEpoch(epoch)
     end
     local regimes = {
         -- start, end,    LR,   WD,
-        {  1,     18,   1e-2,   5e-4, },
-        { 19,     29,   5e-3,   5e-4  },
-        { 30,     43,   1e-3,   0 },
-        { 44,     52,   5e-4,   0 },
-        { 53,    1e8,   1e-4,   0 },
-    }
+ {  1,      10,   1e-1,   5e-4, },
+ {  11,      20,   1e-2,   5e-4, },
+ {  21,      30,   1e-3,   5e-4, },
+}
 
     for _, row in ipairs(regimes) do
         if epoch >= row[1] and epoch <= row[2] then
