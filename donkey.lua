@@ -74,6 +74,7 @@ end
 
 if paths.filep(trainCache) then
    print('Loading train metadata from cache')
+   print('TrainCache: ', trainCache)
    trainLoader = torch.load(trainCache)
    trainLoader.sampleHookTrain = trainHook
    assert(trainLoader.paths[1] == paths.concat(opt.data, 'train'),

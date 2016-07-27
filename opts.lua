@@ -17,24 +17,25 @@ function M.parse(arg)
     ------------ General options --------------------
 
     cmd:option('-cache', './tinyimagenet/checkpoint/', 'subdirectory in which to save/log experiments')
-    cmd:option('-data', './imagenet/imagenet_raw_images/256', 'Home of ImageNet dataset')
+    cmd:option('-data', './tinyimagenetdataset/', 'Home of ImageNet dataset')
     cmd:option('-manualSeed',         2, 'Manually set RNG seed')
     cmd:option('-GPU',                1, 'Default preferred GPU')
     cmd:option('-nGPU',               1, 'Number of GPUs to use by default')
     cmd:option('-backend',     'cudnn', 'Options: cudnn | nn')
     cmd:option('-cudnnAutotune',     0, 'Enable the cudnn auto tune feature Options: 1 | 0')
     ------------- Data options ------------------------
-    cmd:option('-nDonkeys',        2, 'number of donkeys to initialize (data loading threads)')
+    cmd:option('-nDonkeys',        16, 'number of donkeys to initialize (data loading threads)')
     cmd:option('-imageSize',         256,    'Smallest side of the resized image')
     cmd:option('-cropSize',          224,    'Height and Width of image crop to be used as input layer')
     cmd:option('-nClasses',        1000, 'number of classes in the dataset')
     ------------- Training options --------------------
     cmd:option('-nEpochs',         30,    'Number of total epochs to run')
-    cmd:option('-epochSize',       20000, 'Number of batches per epoch') 	-- for batch size 64
+    -- cmd:option('-epochSize',       20000, 'Number of batches per epoch') 	-- for batch size 64
+	-- cmd:option('-epochSize',       10000, 'Number of batches per epoch') 	-- for batch size 128
+	cmd:option('-epochSize',     5000, 'Number of batches per epoch')	-- for batch size 256
 	-- cmd:option('-epochSize',     2500, 'Number of batches per epoch')	-- for batch size 512
-	-- cmd:option('-epochSize',     10000, 'Number of batches per epoch')	-- for batch size 256
     cmd:option('-epochNumber',     1,     'Manual epoch number (useful on restarts)')
-    cmd:option('-batchSize',       64,   'mini-batch size (1 = pure stochastic)')
+    cmd:option('-batchSize',       256,   'mini-batch size (1 = pure stochastic)')
     ---------- Optimization options ----------------------
     cmd:option('-LR',    0.0, 'learning rate; if set, overrides default LR/WD recipe')
     cmd:option('-momentum',        0.9,  'momentum')
