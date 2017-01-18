@@ -2,3 +2,5 @@ imagenet/
 imagenetdataset/
 tinyimagenet/
 tinyimagenetdataset/
+augmenterTestOut/
+*.jpg
