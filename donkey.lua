@@ -7,6 +7,8 @@
 --  of patent rights can be found in the PATENTS file in the same directory.
 --
 require 'image'
+require 'data_augmenter'
+
 paths.dofile('dataset.lua')
 paths.dofile('util.lua')
 
@@ -47,23 +49,15 @@ local mean,std
    which does class-balanced sampling from the dataset and does a random crop
 --]]
 
+-- data augmenter
+local augmenter = DataAugmenter{nGpu = opt.nGPU}
+
 -- function to load the image, jitter it appropriately (random crops etc.)
 local trainHook = function(self, path)
    collectgarbage()
    local input = loadImage(path)
-   local iW = input:size(3)
-   local iH = input:size(2)
-
-   -- do random crop
-   local oW = sampleSize[3]
-   local oH = sampleSize[2]
-   local h1 = math.ceil(torch.uniform(1e-2, iH-oH))
-   local w1 = math.ceil(torch.uniform(1e-2, iW-oW))
-   local out = image.crop(input, w1, h1, w1 + oW, h1 + oH)
-   assert(out:size(3) == oW)
-   assert(out:size(2) == oH)
-   -- do hflip with probability 0.5
-   if torch.uniform() > 0.5 then out = image.hflip(out) end
+   local out = augmenter:Augment(input)
+   
    -- mean/std
    for i=1,3 do -- channels
       if mean then out[{{i},{},{}}]:add(-mean[i]) end
@@ -114,13 +108,8 @@ end
 testHook = function(self, path)
    collectgarbage()
    local input = loadImage(path)
-   local oH = sampleSize[2]
-   local oW = sampleSize[3]
-   local iW = input:size(3)
-   local iH = input:size(2)
-   local w1 = math.ceil((iW-oW)/2)
-   local h1 = math.ceil((iH-oH)/2)
-   local out = image.crop(input, w1, h1, w1+oW, h1+oH) -- center patch
+   local out = augmenter:Augment(input)
+   
    -- mean/std
    for i=1,3 do -- channels
       if mean then out[{{i},{},{}}]:add(-mean[i]) end
