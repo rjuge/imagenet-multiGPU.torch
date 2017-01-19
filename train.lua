@@ -97,13 +97,7 @@ function train()
          -- the job callback (runs in data-worker thread)
          function()
             local inputs, labels = trainLoader:sample(opt.batchSize)
-	    -- do data augmentation with probability 0.85
-	    if torch.uniform() > 0.85 then 
-	       local aug_inputs, aug_labels = data_augmentation(inputs, labels) 
-	       return aug_inputs, aug_labels
-	    else
-	       return inputs, labels
-	    end
+	    return inputs, labels
          end,
          -- the end callback (runs in the main thread)
          trainBatch

@@ -56,14 +56,22 @@ local augmenter = DataAugmenter{nGpu = opt.nGPU}
 local trainHook = function(self, path)
    collectgarbage()
    local input = loadImage(path)
-   local out = augmenter:Augment(input)
+   -- do data augmentation with probability 0.85
+   if torch.uniform() > 0.85 then 
+      input = augmenter:Augment(input)
+   end
+
+   local oW = sampleSize[3]
+   local oH = sampleSize[2]
    
+   assert(input:size(3) == oW)
+   assert(input:size(2) == oH)
    -- mean/std
    for i=1,3 do -- channels
-      if mean then out[{{i},{},{}}]:add(-mean[i]) end
-      if std then out[{{i},{},{}}]:div(std[i]) end
+      if mean then input[{{i},{},{}}]:add(-mean[i]) end
+      if std then input[{{i},{},{}}]:div(std[i]) end
    end
-   return out
+   return input
 end
 
 if paths.filep(trainCache) then
@@ -108,14 +116,22 @@ end
 testHook = function(self, path)
    collectgarbage()
    local input = loadImage(path)
-   local out = augmenter:Augment(input)
+   -- do data augmentation with probability 0.85
+   if torch.uniform() > 0.85 then 
+      input = augmenter:Augment(input)
+   end
+
+   local oW = sampleSize[3]
+   local oH = sampleSize[2]
    
+   assert(input:size(3) == oW)
+   assert(input:size(2) == oH)
    -- mean/std
    for i=1,3 do -- channels
-      if mean then out[{{i},{},{}}]:add(-mean[i]) end
-      if std then out[{{i},{},{}}]:div(std[i]) end
+      if mean then input[{{i},{},{}}]:add(-mean[i]) end
+      if std then input[{{i},{},{}}]:div(std[i]) end
    end
-   return out
+   return input
 end
 
 if paths.filep(testCache) then
