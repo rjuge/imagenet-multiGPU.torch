@@ -16,18 +16,18 @@ function M.parse(arg)
     cmd:text('Options:')
     ------------ General options --------------------
 
-    cmd:option('-cache', './tinyimagenet/checkpoint/', 'subdirectory in which to save/log experiments')
-    cmd:option('-data', './tinyimagenetdataset/', 'Home of ImageNet dataset')
+    cmd:option('-cache', './horusimagenetv1/checkpoint/', 'subdirectory in which to save/log experiments')
+    cmd:option('-data', './horusimagenet_v1dataset/', 'Home of ImageNet dataset')
     cmd:option('-manualSeed',         2, 'Manually set RNG seed')
     cmd:option('-GPU',                1, 'Default preferred GPU')
     cmd:option('-nGPU',               1, 'Number of GPUs to use by default')
     cmd:option('-backend',     'cudnn', 'Options: cudnn | nn')
-    cmd:option('-cudnnAutotune',     0, 'Enable the cudnn auto tune feature Options: 1 | 0')
+    cmd:option('-cudnnAutotune',     1, 'Enable the cudnn auto tune feature Options: 1 | 0')
     ------------- Data options ------------------------
     cmd:option('-nDonkeys',        16, 'number of donkeys to initialize (data loading threads)')
     cmd:option('-imageSize',         256,    'Smallest side of the resized image')
     cmd:option('-cropSize',          224,    'Height and Width of image crop to be used as input layer')
-    cmd:option('-nClasses',        10, 'number of classes in the dataset')
+    cmd:option('-nClasses',        331, 'number of classes in the dataset')
     ------------- Training options --------------------
     cmd:option('-nEpochs',         30,    'Number of total epochs to run')
     -- cmd:option('-epochSize',       20000, 'Number of batches per epoch') 	-- for batch size 64
