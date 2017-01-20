@@ -27,7 +27,7 @@ function M.parse(arg)
     cmd:option('-nDonkeys',        16, 'number of donkeys to initialize (data loading threads)')
     cmd:option('-imageSize',         256,    'Smallest side of the resized image')
     cmd:option('-cropSize',          224,    'Height and Width of image crop to be used as input layer')
-    cmd:option('-nClasses',        1000, 'number of classes in the dataset')
+    cmd:option('-nClasses',        10, 'number of classes in the dataset')
     ------------- Training options --------------------
     cmd:option('-nEpochs',         30,    'Number of total epochs to run')
     -- cmd:option('-epochSize',       20000, 'Number of batches per epoch') 	-- for batch size 64
@@ -41,7 +41,7 @@ function M.parse(arg)
     cmd:option('-momentum',        0.9,  'momentum')
     cmd:option('-weightDecay',     5e-4, 'weight decay')
     ---------- Model options ----------------------------------
-    cmd:option('-netType',     'alexnetowtbn', 'Options: alexnet | overfeat | alexnetowtbn | vgg | googlenet')
+    cmd:option('-netType',     'ninbn', 'Options: alexnet | overfeat | alexnetowtbn | vgg | googlenet | ninbn')
     cmd:option('-retrain',     'none', 'provide path to model to retrain with')
     cmd:option('-optimState',  'none', 'provide path to an optimState to reload from')
     cmd:text()
