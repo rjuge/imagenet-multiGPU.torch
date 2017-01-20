@@ -87,7 +87,7 @@ else
       paths = {paths.concat(opt.data, 'train')},
       loadSize = loadSize,
       sampleSize = sampleSize,
-      split = 100,
+      split = 90,
       verbose = true
    }
    torch.save(trainCache, trainLoader)
