@@ -96,7 +96,7 @@ function train()
       donkeys:addjob(
          -- the job callback (runs in data-worker thread)
          function()
-            local inputs, labels = trainLoader:sample(opt.batchSize)
+            local inputs, labels, _ = trainLoader:sample(opt.batchSize)
 	    return inputs, labels
          end,
          -- the end callback (runs in the main thread)

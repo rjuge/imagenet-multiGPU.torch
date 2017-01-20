@@ -9,7 +9,7 @@
 require 'image'
 require 'data_augmenter'
 
-paths.dofile('dataset.lua')
+paths.dofile('dataset_fast.lua')
 paths.dofile('util.lua')
 
 -- This file contains the data-loading logic and details.
@@ -63,9 +63,8 @@ local trainHook = function(self, path)
 
    local oW = sampleSize[3]
    local oH = sampleSize[2]
-   
-   assert(input:size(3) == oW)
-   assert(input:size(2) == oH)
+   assert(input:size(3) == oW, 'image size and opt.cropSize dismatch')
+   assert(input:size(2) == oH, 'image size and opt.cropSize dismatch')
    -- mean/std
    for i=1,3 do -- channels
       if mean then input[{{i},{},{}}]:add(-mean[i]) end
