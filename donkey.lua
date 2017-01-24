@@ -73,8 +73,8 @@ local trainHook = function(self, path)
       jitter_cnt = jitter_cnt + 1
    end
 
-   assert(input:size(3) == oW, 'image size and opt.cropSize dismatch')
-   assert(input:size(2) == oH, 'image size and opt.cropSize dismatch')
+   assert(input:size(3) == opt.cropSize, 'image size and opt.cropSize dismatch')
+   assert(input:size(2) == opt.cropSize, 'image size and opt.cropSize dismatch')
 
    -- mean/std
    input = augmenter:Normalize(input)
@@ -95,11 +95,11 @@ else
       paths = {opt.data},
       loadSize = loadSize,
       sampleSize = sampleSize,
-      split = 90,
+      split = 98,
       forceClasses = tableFromJSON,
       verbose = true
    }
-   --torch.save(trainCache, trainLoader)
+   torch.save(trainCache, trainLoader)
    trainLoader.sampleHookTrain = trainHook
 end
 collectgarbage()
@@ -136,8 +136,8 @@ testHook = function(self, path)
       input = augmenter:Augment(input)
    end
 
-   assert(input:size(3) == oW, 'image size and opt.cropSize dismatch')
-   assert(input:size(2) == oH, 'image size and opt.cropSize dismatch')
+   assert(input:size(3) == opt.cropSize, 'image size and opt.cropSize dismatch')
+   assert(input:size(2) == opt.cropSize, 'image size and opt.cropSize dismatch')
 
    -- mean/std
    input = augmenter:Normalize(input)
@@ -157,11 +157,11 @@ else
       paths = {opt.data},
       loadSize = loadSize,
       sampleSize = sampleSize,
-      split = 90,
+      split = 98,
       verbose = true,
       forceClasses = tableFromJSON
    }
-   --torch.save(testCache, testLoader)
+   torch.save(testCache, testLoader)
    testLoader.sampleHookTest = testHook
 end
 collectgarbage()

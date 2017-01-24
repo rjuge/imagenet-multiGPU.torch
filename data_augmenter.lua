@@ -74,8 +74,8 @@ end
 function DataAugmenter:Normalize(input)
 
    --imagenet mean and std
-   local mean = { 0.485, 0.456, 0.406 }
-   local std = { 0.229, 0.224, 0.225 }
+   local mean = self.meanstd['mean']
+   local std = self.meanstd['std']
 
    for i=1,3 do -- channels
       input[{{i},{},{}}]:add(-mean[i])
