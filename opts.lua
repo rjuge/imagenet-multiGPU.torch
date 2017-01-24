@@ -31,9 +31,9 @@ function M.parse(arg)
     ------------- Training options --------------------
     cmd:option('-nEpochs',         30,    'Number of total epochs to run')
     -- cmd:option('-epochSize',       20000, 'Number of batches per epoch') 	-- for batch size 64
-	-- cmd:option('-epochSize',       10000, 'Number of batches per epoch') 	-- for batch size 128
-	cmd:option('-epochSize',     5000, 'Number of batches per epoch')	-- for batch size 256
-	-- cmd:option('-epochSize',     2500, 'Number of batches per epoch')	-- for batch size 512
+    -- cmd:option('-epochSize',       10000, 'Number of batches per epoch') 	-- for batch size 128
+    cmd:option('-epochSize',     5000, 'Number of batches per epoch')	-- for batch size 256
+    -- cmd:option('-epochSize',     2500, 'Number of batches per epoch')	-- for batch size 512
     cmd:option('-epochNumber',     1,     'Manual epoch number (useful on restarts)')
     cmd:option('-batchSize',       256,   'mini-batch size (1 = pure stochastic)')
     ---------- Optimization options ----------------------
