@@ -1,4 +1,5 @@
 local Augmentations = require 'data_augmentations'
+require 'hzproc'
 
 local DataAugmenter = torch.class('DataAugmenter')
 
@@ -54,4 +55,31 @@ function DataAugmenter:Augment(input)
   output = self.augmentationPipeline(input)
   return output
   
+end
+
+function DataAugmenter:Crop(input)
+
+   local iW = input:size(3)
+   local iH = input:size(2)
+
+   local oW = 224
+   local oH = 224
+
+   -- crop
+   x1, y1 = torch.random(0, iW - opt.cropSize), torch.random(0, iH - opt.cropSize)
+   input = hzproc.Crop.Fast(input, oW, oH, x1, y1, x1+opt.cropSize, y1+opt.cropSize)
+   return input
+end
+
+function DataAugmenter:Normalize(input)
+
+   --imagenet mean and std
+   local mean = { 0.485, 0.456, 0.406 }
+   local std = { 0.229, 0.224, 0.225 }
+
+   for i=1,3 do -- channels
+      input[{{i},{},{}}]:add(-mean[i])
+      input[{{i},{},{}}]:div(std[i]) 
+   end
+   return input
 end

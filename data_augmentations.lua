@@ -46,9 +46,8 @@ function A.RandomAffine(prob)
        local deg = torch.uniform(-5,5)
        local xshear = torch.uniform(-0.05,0.05)
        local yshear = torch.uniform(-0.05,0.05)
-       local xscale = torch.uniform(1.0,1.2)
-       local yscale = torch.uniform(1.0,1.2)
-       transform = A.Affine(deg, xshear, yshear, xscale, yscale)
+       local scale = torch.uniform(1.0,1.2)
+       transform = A.Affine(deg, xshear, yshear, scale)
        input = transform(input)
     end
     return input
@@ -341,15 +340,15 @@ function A.HorizontalFlip(bool)
    end
 end
 
-function A.Affine(deg, xshear, yshear, xscale, yscale)
+function A.Affine(deg, xshear, yshear, scale)
    return function(input)
       if deg ~= 0 then
-	 local mat = hzproc.Affine.RotateArround(deg * math.pi/180, input:size(3)/2, input:size(2)/2)
-	 mat = mat * hzproc.Affine.Scale(xscale, yscale)
-	 mat = mat * hzproc.Affine.Shear(xshear, yshear)
-	 mat = mat * hzproc.Affine.Shift(-0.1*input:size(3), -0.1*input:size(2))
-	 -- affine mapping
-	 input = hzproc.Transform.Fast(input, mat);
+	  local mat = hzproc.Affine.RotateArround(deg * math.pi/180, input:size(3)/2, input:size(2)/2)
+      mat = mat * hzproc.Affine.ScaleArround(scale, scale, input:size(3)/2, input:size(2)/2)
+	  mat = mat * hzproc.Affine.ShearArround(xshear, yshear, input:size(3)/2, input:size(2)/2)
+
+	  -- affine mapping
+	  input = hzproc.Transform.Fast(input, mat);
 	 
       end
       return input
