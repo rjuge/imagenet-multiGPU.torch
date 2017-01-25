@@ -8,6 +8,11 @@
 --
 require 'image'
 require 'data_augmenter'
+require 'hzproc'
+local c = require 'trepl.colorize'
+local json = require 'json'
+
+tableFromJSON = json.load('hv01_labels2classes.json')
 
 paths.dofile('dataset_fast.lua')
 paths.dofile('util.lua')
@@ -53,29 +58,32 @@ local mean,std
 local augmenter = DataAugmenter{nGpu = opt.nGPU}
 
 -- function to load the image, jitter it appropriately (random crops etc.)
+jitter_cnt = 0
 local trainHook = function(self, path)
    collectgarbage()
-   local input = loadImage(path)
+   local input = (loadImage(path)):cuda()
+
+   -- crop 
+   input = augmenter:Crop(input)
+
    -- do data augmentation with probability 0.85
-   if torch.uniform() > 0.85 then 
+   if torch.uniform() > 0.05 then 
+      --print(c.red 'Jittered!')
       input = augmenter:Augment(input)
+      jitter_cnt = jitter_cnt + 1
    end
 
-   local oW = sampleSize[3]
-   local oH = sampleSize[2]
    assert(input:size(3) == oW, 'image size and opt.cropSize dismatch')
    assert(input:size(2) == oH, 'image size and opt.cropSize dismatch')
+
    -- mean/std
-   for i=1,3 do -- channels
-      if mean then input[{{i},{},{}}]:add(-mean[i]) end
-      if std then input[{{i},{},{}}]:div(std[i]) end
-   end
+   input = augmenter:Normalize(input)
    return input
 end
 
 if paths.filep(trainCache) then
-   print('Loading train metadata from cache')
-   print('TrainCache: ', trainCache)
+   print(c.blue 'Loading train metadata from cache')
+   --print('TrainCache: ', trainCache)
    trainLoader = torch.load(trainCache)
    trainLoader.sampleHookTrain = trainHook
    assert(trainLoader.paths[1] == paths.concat(opt.data, 'train'),
@@ -84,21 +92,24 @@ if paths.filep(trainCache) then
 else
    print('Creating train metadata')
    trainLoader = dataLoader{
-      paths = {paths.concat(opt.data, 'train')},
+      paths = {opt.data},
       loadSize = loadSize,
       sampleSize = sampleSize,
       split = 90,
+      forceClasses = tableFromJSON,
       verbose = true
    }
-   torch.save(trainCache, trainLoader)
+   --torch.save(trainCache, trainLoader)
    trainLoader.sampleHookTrain = trainHook
 end
 collectgarbage()
 
 -- do some sanity checks on trainLoader
 do
+   print('Train loader classes and nb of classes:')
    local class = trainLoader.imageClass
    local nClasses = #trainLoader.classes
+   print(nClasses)
    assert(class:max() <= nClasses, "class logic has error")
    assert(class:min() >= 1, "class logic has error")
 
@@ -114,22 +125,22 @@ end
 -- function to load the image
 testHook = function(self, path)
    collectgarbage()
-   local input = loadImage(path)
+   local input = (loadImage(path)):cuda()
+
+   -- crop
+   input = augmenter:Crop(input)
+
    -- do data augmentation with probability 0.85
    if torch.uniform() > 0.85 then 
+      --print(c.red 'Jittered!')
       input = augmenter:Augment(input)
    end
 
-   local oW = sampleSize[3]
-   local oH = sampleSize[2]
-   
-   assert(input:size(3) == oW)
-   assert(input:size(2) == oH)
+   assert(input:size(3) == oW, 'image size and opt.cropSize dismatch')
+   assert(input:size(2) == oH, 'image size and opt.cropSize dismatch')
+
    -- mean/std
-   for i=1,3 do -- channels
-      if mean then input[{{i},{},{}}]:add(-mean[i]) end
-      if std then input[{{i},{},{}}]:div(std[i]) end
-   end
+   input = augmenter:Normalize(input)
    return input
 end
 
@@ -143,14 +154,14 @@ if paths.filep(testCache) then
 else
    print('Creating test metadata')
    testLoader = dataLoader{
-      paths = {paths.concat(opt.data, 'val')},
+      paths = {opt.data},
       loadSize = loadSize,
       sampleSize = sampleSize,
-      split = 0,
+      split = 90,
       verbose = true,
-      forceClasses = trainLoader.classes -- force consistent class indices between trainLoader and testLoader
+      forceClasses = tableFromJSON
    }
-   torch.save(testCache, testLoader)
+   --torch.save(testCache, testLoader)
    testLoader.sampleHookTest = testHook
 end
 collectgarbage()

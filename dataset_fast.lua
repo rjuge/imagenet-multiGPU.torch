@@ -10,6 +10,9 @@ require 'sys'
 require 'xlua'
 require 'image'
 tds = require 'tds'
+local c = require 'trepl.colorize'
+local string = require 'string'
+
 
 local dataset = torch.class('dataLoader')
 
@@ -65,6 +68,7 @@ local initcheck = argcheck{
        .. " For example: {3 : 'dog', 5 : 'cat'}"
        .. "This function is very useful when you want two loaders to have the same "
     .. "class indices (trainLoader/testLoader for example)",
+    default = tableFromJSON,
     opt = true},
 
    {name="sampleHookTrain",
@@ -97,14 +101,18 @@ function dataset:__init(...)
    local classPaths = tds.Hash()
    if self.forceClasses then
       print('Adding forceClasses class names')
+      classes_cnt = 0
       for k,v in pairs(self.forceClasses) do
-         self.classes[k] = v
-         classPaths[k] = tds.Hash()
+         self.classes[tonumber(string.sub(k,6,-1))] = v
+         classPaths[tonumber(string.sub(k,6,-1))] = tds.Hash()
+         classes_cnt = classes_cnt + 1
       end
    end
+   
    -- loop over each paths folder, get list of unique class names,
    -- also store the directory paths per class
    -- for each class,
+   --[[
    print('Adding all path folders')
    for _,path in ipairs(self.paths) do
       for dirpath in paths.iterdirs(path) do
@@ -114,10 +122,18 @@ function dataset:__init(...)
          classPaths[#classPaths + 1] = dirpath
       end
    end
+   --]]
 
-   print(#self.classes .. ' class names found')
+   -- modified one
+   print('Adding all path folders')
+   for k,_ in pairs(self.forceClasses) do
+      dirpath = opt.data .. k .. '/'
+      classPaths[tonumber(string.sub(k,6,-1))] = dirpath
+   end
+
+   print(classes_cnt .. ' class names found')
    self.classIndices = {}
-   for k,v in ipairs(self.classes) do
+   for k,v in pairs(self.classes) do
       self.classIndices[v] = k
    end
 
@@ -171,8 +187,8 @@ function dataset:__init(...)
    print('Updating classList and imageClass appropriately')
    self.imageClass:resize(self.numSamples)
    local runningIndex = 0
-   for i=1,#self.classes do
-      if self.verbose then xlua.progress(i, #(self.classes)) end
+   for i=1,classes_cnt do
+      if self.verbose then xlua.progress(i, classes_cnt) end
       local clsLength = counts[classPaths[i]]
       if clsLength == 0 then
          error('Class has zero samples: ' .. self.classes[i])
@@ -195,7 +211,7 @@ function dataset:__init(...)
       self.classListSample = self.classListTrain
       local totalTestSamples = 0
       -- split the classList into classListTrain and classListTest
-      for i=1,#self.classes do
+      for i=1,classes_cnt do
          local list = self.classList[i]
          count = self.classList[i]:size(1)
          local splitidx = math.floor((count * self.split / 100) + 0.5) -- +round
@@ -221,7 +237,7 @@ function dataset:__init(...)
       self.testIndicesSize = totalTestSamples
       local tdata = self.testIndices:data()
       local tidx = 0
-      for i=1,#self.classes do
+      for i=1,classes_cnt do
          local list = self.classListTest[i]
          if list:dim() ~= 0 then
             local ldata = list:data()
@@ -286,7 +302,7 @@ end
 
 -- converts a table of samples (and corresponding labels) to a clean tensor
 local function tableToOutput(self, dataTable, scalarTable)
-   local data, scalarLabels, labels
+   local data, scalarLabels
    local quantity = #scalarTable
    local samplesPerDraw
    if dataTable[1]:dim() == 3 then samplesPerDraw = 1
@@ -294,21 +310,17 @@ local function tableToOutput(self, dataTable, scalarTable)
    if quantity == 1 and samplesPerDraw == 1 then
       data = dataTable[1]
       scalarLabels = scalarTable[1]
-      labels = torch.LongTensor(#(self.classes)):fill(-1)
-      labels[scalarLabels] = 1
    else
       data = torch.Tensor(quantity * samplesPerDraw,
                           self.sampleSize[1], self.sampleSize[2], self.sampleSize[3])
       scalarLabels = torch.LongTensor(quantity * samplesPerDraw)
-      labels = torch.LongTensor(quantity * samplesPerDraw, #(self.classes)):fill(-1)
       for i=1,#dataTable do
          local idx = (i-1)*samplesPerDraw
          data[{{idx+1,idx+samplesPerDraw}}]:copy(dataTable[i])
          scalarLabels[{{idx+1,idx+samplesPerDraw}}]:fill(scalarTable[i])
-         labels[{{idx+1,idx+samplesPerDraw},{scalarTable[i]}}]:fill(1)
       end
    end
-   return data, scalarLabels, labels
+   return data, scalarLabels
 end
 
 -- sampler, samples from the training set.
@@ -317,16 +329,16 @@ function dataset:sample(quantity)
       error('No training mode when split is set to 0')
    end
    quantity = quantity or 1
-   local dataTable = tds.Hash()
-   local scalarTable = tds.Hash()
+   local dataTable = {}
+   local scalarTable = {}
    for _=1,quantity do
-      local class = torch.random(1, #self.classes)
+      local class = torch.random(1, classes_cnt)
       local out = self:getByClass(class)
       dataTable[#dataTable + 1] = out
       scalarTable[#scalarTable + 1] = class
    end
-   local data, scalarLabels, labels = tableToOutput(self, dataTable, scalarTable)
-   return data, scalarLabels, labels
+   local data, scalarLabels = tableToOutput(self, dataTable, scalarTable)
+   return data, scalarLabels
 end
 
 function dataset:get(i1, i2)
@@ -357,8 +369,8 @@ function dataset:get(i1, i2)
       table.insert(dataTable, out)
       table.insert(scalarTable, self.imageClass[idx])
    end
-   local data, scalarLabels, labels = tableToOutput(self, dataTable, scalarTable)
-   return data, scalarLabels, labels
+   local data, scalarLabels = tableToOutput(self, dataTable, scalarTable)
+   return data, scalarLabels
 end
 
 function dataset:test(quantity)
@@ -370,9 +382,9 @@ function dataset:test(quantity)
    local qty = quantity or 1
    return function ()
       if i+qty-1 <= n then
-         local data, scalarLabelss, labels = self:get(i, i+qty-1)
+         local data, scalarLabelss = self:get(i, i+qty-1)
          i = i + qty
-         return data, scalarLabelss, labels
+         return data, scalarLabelss
       end
    end
 end

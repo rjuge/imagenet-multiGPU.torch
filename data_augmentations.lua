@@ -343,11 +343,12 @@ end
 function A.Affine(deg, xshear, yshear, scale)
    return function(input)
       if deg ~= 0 then
-	 local mat = hzproc.Affine.RotateArround(deg * math.pi/180, input:size(3)/2, input:size(2)/2)
-	 mat = mat * hzproc.Affine.ScaleArround(scale, scale, input:size(3)/2, input:size(2)/2)
-	 mat = mat * hzproc.Affine.ShearArround(xshear, yshear, input:size(3)/2, input:size(2)/2)
-	 -- affine mapping
-	 input = hzproc.Transform.Fast(input, mat);
+	  local mat = hzproc.Affine.RotateArround(deg * math.pi/180, input:size(3)/2, input:size(2)/2)
+      mat = mat * hzproc.Affine.ScaleArround(scale, scale, input:size(3)/2, input:size(2)/2)
+	  mat = mat * hzproc.Affine.ShearArround(xshear, yshear, input:size(3)/2, input:size(2)/2)
+
+	  -- affine mapping
+	  input = hzproc.Transform.Fast(input, mat);
 	 
       end
       return input
