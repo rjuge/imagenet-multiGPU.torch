@@ -48,10 +48,12 @@ local function paramsForEpoch(epoch)
     end
     local regimes = {
         -- start, end,    LR,   WD,
- {  1,      9,   1e-1,   5e-4, },
- { 10,     19,   1e-2,   5e-4  },
- { 20,     25,   1e-3,   0 },
- { 26,     30,   1e-4,   0 },
+ { 1,      4,   5e-1,   5e-4, },
+ { 5,      9,   1e-1,   1e-4  },
+ { 10,     14,   5e-2,   5e-5 },
+ { 15,     19,   1e-2,   1e-5 },
+ { 20,     24,   5e-3,   0 },
+ { 25,     30,   1e-3,   0 },
 }
 
     for _, row in ipairs(regimes) do

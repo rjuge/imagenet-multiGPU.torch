@@ -12,7 +12,7 @@ require 'image'
 tds = require 'tds'
 local c = require 'trepl.colorize'
 local string = require 'string'
-
+require 'sort'
 
 local dataset = torch.class('dataLoader')
 
@@ -108,7 +108,8 @@ function dataset:__init(...)
          classes_cnt = classes_cnt + 1
       end
    end
-   
+
+
    -- loop over each paths folder, get list of unique class names,
    -- also store the directory paths per class
    -- for each class,
@@ -130,7 +131,6 @@ function dataset:__init(...)
       dirpath = opt.data .. k .. '/'
       classPaths[tonumber(string.sub(k,6,-1))] = dirpath
    end
-
    print(classes_cnt .. ' class names found')
    self.classIndices = {}
    for k,v in pairs(self.classes) do
@@ -152,27 +152,27 @@ function dataset:__init(...)
 
    local fullPaths = tds.Hash()
    -- iterate over classPaths
-   for _,path in pairs(classPaths) do
+   for _,path in pairsByKeys(classPaths) do
     local count = 0
       -- iterate over files in the class path
       for f in paths.iterfiles(path) do
-        local fullPath = path .. '/' .. f
+        local fullPath = path .. f
         maxPathLength = math.max(fullPath:len(), maxPathLength)
         count = count + 1
         length = length + 1
         fullPaths[#fullPaths + 1] = fullPath
       end
+
       counts[path] = count
    end
 
    assert(length > 0, "Could not find any image file in the given input paths")
    assert(maxPathLength > 0, "paths of files are length 0?")
    maxPathLength = maxPathLength + 1
-print(c.red 'length:', length)
    self.imagePath:resize(length, maxPathLength):fill(0)
    local s_data = self.imagePath:data()
    local count = 0
-   for _,line in pairs(fullPaths) do
+   for _,line in pairsByKeys(fullPaths) do
      ffi.copy(s_data, line)
      s_data = s_data + maxPathLength
      if self.verbose and count % 10000 == 0 then
