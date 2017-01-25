@@ -39,7 +39,7 @@ function createModel(nGPU)
 
    local model = nn.Sequential()
       :add(makeDataParallel(nin, nGPU))
-      :add(nn.Linear(1024,1000))
+      :add(nn.Linear(1024,331))
       :add(nn.LogSoftMax())
 
    model.imageSize = 256
