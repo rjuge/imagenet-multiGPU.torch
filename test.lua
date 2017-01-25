@@ -66,7 +66,6 @@ function testBatch(inputsCPU, labelsCPU)
 
    inputs:resize(inputsCPU:size()):copy(inputsCPU)
    labels:resize(labelsCPU:size()):copy(labelsCPU)
-
    local outputs = model:forward(inputs)
    local err = criterion:forward(outputs, labels)
    cutorch.synchronize()

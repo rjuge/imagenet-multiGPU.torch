@@ -40,17 +40,21 @@ end
 
 nClasses = nil
 classes = nil
+nTrain = 0
 donkeys:addjob(function() return trainLoader.classes end, function(c) classes = c end)
 donkeys:synchronize()
 nClasses = #classes
+donkeys:addjob(function() return trainLoader:sizeTrain() end, function(c) nTrain = c end)
+donkeys:synchronize()
 assert(nClasses, "Failed to get nClasses")
 assert(nClasses == opt.nClasses,
        "nClasses is reported different in the data loader, and in the commandline options")
 print('nClasses: ', nClasses)
+print('nTrain: ', nTrain)
 torch.save(paths.concat(opt.save, 'classes.t7'), classes)
 
 nTest = 0
-donkeys:addjob(function() return testLoader:size() end, function(c) nTest = c end)
+donkeys:addjob(function() return testLoader:sizeTest() end, function(c) nTest = c end)
 donkeys:synchronize()
 assert(nTest > 0, "Failed to get nTest")
 print('nTest: ', nTest)

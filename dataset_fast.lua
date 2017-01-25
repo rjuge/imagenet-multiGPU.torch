@@ -168,7 +168,7 @@ function dataset:__init(...)
    assert(length > 0, "Could not find any image file in the given input paths")
    assert(maxPathLength > 0, "paths of files are length 0?")
    maxPathLength = maxPathLength + 1
-
+print(c.red 'length:', length)
    self.imagePath:resize(length, maxPathLength):fill(0)
    local s_data = self.imagePath:data()
    local count = 0
@@ -180,7 +180,6 @@ function dataset:__init(...)
      end;
      count = count + 1
    end
-
    self.numSamples = self.imagePath:size(1)
    if self.verbose then print(self.numSamples ..  ' samples found.') end
    --==========================================================================

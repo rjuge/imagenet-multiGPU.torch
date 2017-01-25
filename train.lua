@@ -149,7 +149,6 @@ function trainBatch(inputsCPU, labelsCPU)
    -- transfer over to GPU
    inputs:resize(inputsCPU:size()):copy(inputsCPU)
    labels:resize(labelsCPU:size()):copy(labelsCPU)
-
    local err, outputs
    feval = function(x)
       model:zeroGradParameters()
