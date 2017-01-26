@@ -66,8 +66,8 @@ local trainHook = function(self, path)
    -- crop 
    input = augmenter:Crop(input)
 
-   -- do data augmentation with probability 0.85
-   --if torch.uniform() > 0.05 then 
+   -- do data augmentation with probability opt.PaugTrain
+   --if torch.uniform() > opt.PaugTrain then 
       --print(c.red 'Jittered!')
      -- input = augmenter:Augment(input)
      -- jitter_cnt = jitter_cnt + 1
@@ -130,8 +130,8 @@ testHook = function(self, path)
    -- crop
    input = augmenter:Crop(input)
 
-   -- do data augmentation with probability 0.85
-   --if torch.uniform() > 0.85 then 
+   -- do data augmentation with probability opt.PaugTest
+   --if torch.uniform() > opt.PaugTest then 
       --print(c.red 'Jittered!')
      -- input = augmenter:Augment(input)
    --end

@@ -3,4 +3,5 @@ imagenetdataset/
 tinyimagenet/
 tinyimagenetdataset/
 augmenterTestOut/
+horusimagenetv1/
 *.jpg

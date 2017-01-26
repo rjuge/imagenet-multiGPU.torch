@@ -28,6 +28,8 @@ function M.parse(arg)
     cmd:option('-imageSize',         256,    'Smallest side of the resized image')
     cmd:option('-cropSize',          224,    'Height and Width of image crop to be used as input layer')
     cmd:option('-nClasses',        331, 'number of classes in the dataset')
+    cmd:option('-PaugTrain',        0.5, 'probability of data augmentation for training')
+    cmd:option('-PaugTest',        0.0, 'probability of data augmentation for testing')
     ------------- Training options --------------------
     cmd:option('-nEpochs',         30,    ' Number of total epochs to run')
     -- cmd:option('-epochSize',       20000, 'Number of batches per epoch') 	-- for batch size 64
