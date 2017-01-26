@@ -155,7 +155,7 @@ function A.RandomLightning(prob, pca)
       if whichTransform < 0.20 then
         --print("ColorJitter")
         transform = A.ColorJitter({
-           contrast = 0.50,
+           contrast = 0.30,
            brightness = 0.50,
            saturation = 0.50,
          })
@@ -341,15 +341,14 @@ function A.HorizontalFlip(bool)
 end
 
 function A.Affine(deg, xshear, yshear, scale)
+
    return function(input)
       if deg ~= 0 then
-	  local mat = hzproc.Affine.RotateArround(deg * math.pi/180, input:size(3)/2, input:size(2)/2)
-      mat = mat * hzproc.Affine.ScaleArround(scale, scale, input:size(3)/2, input:size(2)/2)
-	  mat = mat * hzproc.Affine.ShearArround(xshear, yshear, input:size(3)/2, input:size(2)/2)
-
-	  -- affine mapping
-	  input = hzproc.Transform.Fast(input, mat);
-	 
+	 local affine = hzproc.Affine.RotateArround(deg * math.pi/180, input:size(3)/2, input:size(2)/2)
+	 torch.mm(affine, affine, hzproc.Affine.ScaleArround(scale, scale, input:size(3)/2, input:size(2)/2))
+	 torch.mm(affine,affine, hzproc.Affine.ShearArround(xshear, yshear, input:size(3)/2, input:size(2)/2))
+	 -- affine mapping
+	 input = hzproc.Transform.Fast(input, affine); 
       end
       return input
    end
@@ -467,10 +466,11 @@ end
 function A.ColorAWGN(var)
 
   return function(input)
-    noisetensor = torch.Tensor(input:size()):type(torch.type(input)):normal(0, torch.uniform(0,var))
+    noisetensor = noisetensor or torch.Tensor(input:size()):type(torch.type(input))
+    noisetensor:normal(0, torch.uniform(0,var))
     --randomkit.normal(noisetensor, 0, torch.uniform(0,var))
     --print(noisetensor)
-    input = input + noisetensor
+    input:add(noisetensor)
     return input
   end
   
@@ -479,14 +479,18 @@ end
 function A.IntensityAWGN(var)
   
   return function(input)
-    
-   noisetensor = torch.Tensor(input:size(2), input:size(3)):type(torch.type(input)):normal(0,torch.uniform(0,var))
-   --randomkit.normal(noisetensor, 0, torch.uniform(0,var))--torch.uniform(0,var))
-   finalnoisetensor = torch.Tensor(input:size()):type(torch.type(input))
-   finalnoisetensor[1] = noisetensor * 0.299
-   finalnoisetensor[2] = noisetensor * 0.587
-   finalnoisetensor[3] = noisetensor * 0.114
-   input = input + finalnoisetensor
+  --print("Intensity AVGN")
+   noiseplane = noiseplane or torch.Tensor(input:size(2), input:size(3)):type(torch.type(input)) 
+   noiseplane:normal(0,torch.uniform(0,var))
+   noisetensor = noisetensor or torch.Tensor(input:size()):type(torch.type(input))
+   noisetensor:zero()
+
+   
+   --finalnoisetensor = torch.Tensor(input:size()):type(torch.type(input))
+   noisetensor[1]:add(noiseplane):mul(0.299)
+   noisetensor[2]:add(noiseplane):mul(0.587)
+   noisetensor[3]:add(noiseplane):mul(0.114)
+   input:add(noisetensor)
    return input
   end
 end
@@ -501,7 +505,7 @@ function A.HueJitter(var)
     local angle = torch.random(-var,var) -- shift in hue space (deg)
     local VSU = math.cos(angle*math.pi/180)
     local VSW = math.sin(angle*math.pi/180)
-    output = torch.Tensor(input:size()):type(torch.type(input))
+    output = output or torch.Tensor(input:size()):type(torch.type(input))
 
         
     output[1] = torch.mul(input[1], (.299 + .701*VSU + .168*VSW)):add( torch.mul(input[2], (.587 - .587*VSU + .330*VSW))):add(torch.mul(input[3], (.114 - .114*VSU - .497*VSW)))
@@ -517,8 +521,8 @@ function A.MagentaTinge(var)
     --output = torch.Tensor(input:size()):copy(input)
     local greenstrength = torch.uniform(0,var)
     local bluestrength = 2*greenstrength
-    input[2] = input[2] - greenstrength
-    input[3] = input[3] + bluestrength
+    input[2]:add(-greenstrength)
+    input[3]:add(bluestrength)
     return input
   end
 end
@@ -528,8 +532,8 @@ function A.GreenTinge(var)
   return function(input)
     --output = torch.Tensor(input:size()):copy(input)
     local strength = torch.uniform(0,var)
-    input[1] = input[1] - strength
-    input[2] = input[2] + strength
+    input[1]:add(-strength)
+    input[2]:add(strength)
     return input
   end
 end
