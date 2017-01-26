@@ -20,11 +20,11 @@ function M.parse(arg)
     cmd:option('-data', './tiny_horusimagenet_v1dataset/', 'Home of ImageNet dataset')
     cmd:option('-manualSeed',         2, 'Manually set RNG seed')
     cmd:option('-GPU',                1, 'Default preferred GPU')
-    cmd:option('-nGPU',               4, 'Number of GPUs to use by default')
+    cmd:option('-nGPU',               2, 'Number of GPUs to use by default')
     cmd:option('-backend',     'cudnn', 'Options: cudnn | nn')
     cmd:option('-cudnnAutotune',     1, 'Enable the cudnn auto tune feature Options: 1 | 0')
     ------------- Data options ------------------------
-    cmd:option('-nDonkeys',        16, 'number of donkeys to initialize (data loading threads)')
+    cmd:option('-nDonkeys',        6, 'number of donkeys to initialize (data loading threads)')
     cmd:option('-imageSize',         256,    'Smallest side of the resized image')
     cmd:option('-cropSize',          224,    'Height and Width of image crop to be used as input layer')
     cmd:option('-nClasses',        331, 'number of classes in the dataset')
@@ -45,7 +45,7 @@ function M.parse(arg)
     cmd:option('-retrain',     'none', 'provide path to model to retrain with')
     cmd:option('-optimState',  'none', 'provide path to an optimState to reload from')
     cmd:text()
-
+    
     local opt = cmd:parse(arg or {})
     -- add commandline specified options
     opt.save = paths.concat(opt.cache,

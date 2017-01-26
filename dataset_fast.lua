@@ -125,7 +125,7 @@ function dataset:__init(...)
    end
    --]]
 
-   -- modified one
+   -- modified loop over each paths folder, get list of unique class names
    print('Adding all path folders')
    for k,_ in pairs(self.forceClasses) do
       dirpath = opt.data .. k .. '/'

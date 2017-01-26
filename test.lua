@@ -6,7 +6,6 @@
 --  LICENSE file in the root directory of this source tree. An additional grant
 --  of patent rights can be found in the PATENTS file in the same directory.
 --
-testLogger = optim.Logger(paths.concat(opt.save, 'test.log'))
 
 local batchNumber
 local top1_center, loss
@@ -44,10 +43,9 @@ function test()
 
    top1_center = top1_center * 100 / nTest
    loss = loss / nTest -- because loss is calculated per batch
-   testLogger:add{
-      ['% top1 accuracy (test set) (center crop)'] = top1_center,
-      ['avg loss (test set)'] = loss
-   }
+
+   return loss, top1_center
+
    print(string.format('Epoch: [%d][TESTING SUMMARY] Total Time(s): %.2f \t'
                           .. 'average loss (per batch): %.2f \t '
                           .. 'accuracy [Center](%%):\t top-1 %.2f\t ',

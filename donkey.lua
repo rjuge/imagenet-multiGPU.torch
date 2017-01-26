@@ -67,11 +67,11 @@ local trainHook = function(self, path)
    input = augmenter:Crop(input)
 
    -- do data augmentation with probability 0.85
-   if torch.uniform() > 0.05 then 
+   --if torch.uniform() > 0.05 then 
       --print(c.red 'Jittered!')
-      input = augmenter:Augment(input)
-      jitter_cnt = jitter_cnt + 1
-   end
+     -- input = augmenter:Augment(input)
+     -- jitter_cnt = jitter_cnt + 1
+   --end
 
    assert(input:size(3) == opt.cropSize, 'image size and opt.cropSize dismatch')
    assert(input:size(2) == opt.cropSize, 'image size and opt.cropSize dismatch')
@@ -131,10 +131,10 @@ testHook = function(self, path)
    input = augmenter:Crop(input)
 
    -- do data augmentation with probability 0.85
-   if torch.uniform() > 0.85 then 
+   --if torch.uniform() > 0.85 then 
       --print(c.red 'Jittered!')
-      input = augmenter:Augment(input)
-   end
+     -- input = augmenter:Augment(input)
+   --end
 
    assert(input:size(3) == opt.cropSize, 'image size and opt.cropSize dismatch')
    assert(input:size(2) == opt.cropSize, 'image size and opt.cropSize dismatch')

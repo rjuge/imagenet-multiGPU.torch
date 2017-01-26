@@ -12,6 +12,7 @@ require 'paths'
 require 'xlua'
 require 'optim'
 require 'nn'
+require 'logger'
 
 torch.setdefaulttensortype('torch.FloatTensor')
 
@@ -40,8 +41,36 @@ paths.dofile('test.lua')
 
 epoch = opt.epochNumber
 
+-- Create loggers
+local train_loss = 0
+local val_loss = 0
+local top1_train = 0
+local top1_val = 0
+
+lossLogFileName = 'loss.log'
+perfLogFileName = 'perf.log'
+lossLoggerPath = paths.concat(opt.save, lossLogFileName)
+perfLoggerPath = paths.concat(opt.save, perfLogFileName)
+print("Initializing Loggers: ", lossLogFileName, perfLogFileName)
+lossLogger = Logger(lossLoggerPath)
+lossLogger:setNames{'Training Loss','Validation Loss' }
+perfLogger = Logger(perfLoggerPath)
+perfLogger:setNames{'% top1 accuracy (train set)', '% top1 accuracy (val set)'}
+
 for i=1,opt.nEpochs do
-   train()
-   test()
+   train_loss, top1_train = train()
+   val_loss, top1_val = test()
+
+   lossLogger:add{train_loss, val_loss}
+   lossLogger:style{'-', '-'}
+
+   perfLogger:add{top1_train, top1_val} 
+   perfLogger:style{'-', '-'}
+
+   lossLogger:plot()
+   perfLogger:plot()
+
    epoch = epoch + 1
+   train_loss, top1_train = 0,0
+   val_loss, top1_val = 0,0
 end
