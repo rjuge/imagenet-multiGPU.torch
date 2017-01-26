@@ -38,22 +38,22 @@ function DataAugmenter:__init(opt)
   {
     Augmentations.RandomLightning(0.80, self.pca),
     Augmentations.RandomHueJitter(0.5),
-    Augmentations.RandomTinge(0.5),
+    Augmentations.RandomTinge(0.3),
     Augmentations.RandomBlurAndNoise(0.50, 0.75),
     Augmentations.RandomHorizontalFlip(0.5),
-    Augmentations.RandomAffine(0.6),
+    Augmentations.RandomAffine(0.85),
   }
-  
+  collectgarbage()
 end
 
 --------------------------------------------------
 ----- External Interface
 --------------------------------------------------
-
 function DataAugmenter:Augment(input)
-  
-  output = self.augmentationPipeline(input)
-  return output
+  --print("Augmenting")
+  --output = self.augmentationPipeline(input)
+  input = self.augmentationPipeline(input)
+  return input
   
 end
 
