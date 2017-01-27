@@ -24,7 +24,7 @@ function test()
 
    top1_center = 0
    loss = 0
-   for i = 1, math.ceil(nTest/opt.batchSize) do -- nTest is set in 1_data.lua
+   for i = 1, math.ceil(nTest/opt.batchSize) do -- nTest is set in data.lua
       local indexStart = (i-1) * opt.batchSize + 1
       local indexEnd = math.min(nTest, indexStart + opt.batchSize - 1)
       donkeys:addjob(
@@ -44,8 +44,6 @@ function test()
    top1_center = top1_center * 100 / nTest
    loss = loss / nTest -- because loss is calculated per batch
 
-   return loss, top1_center
-
    print(string.format('Epoch: [%d][TESTING SUMMARY] Total Time(s): %.2f \t'
                           .. 'average loss (per batch): %.2f \t '
                           .. 'accuracy [Center](%%):\t top-1 %.2f\t ',
@@ -53,7 +51,7 @@ function test()
 
    print('\n')
 
-
+   return loss, top1_center
 end -- of test()
 -----------------------------------------------------------------------------
 local inputs = torch.CudaTensor()
@@ -79,4 +77,5 @@ function testBatch(inputsCPU, labelsCPU)
    if batchNumber % 1024 == 0 then
       print(('Epoch: Testing [%d][%d/%d]'):format(epoch, batchNumber, nTest))
    end
+   collectgarbage()
 end

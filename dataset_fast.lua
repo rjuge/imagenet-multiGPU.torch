@@ -324,6 +324,7 @@ end
 
 -- sampler, samples from the training set.
 function dataset:sample(quantity)
+   collectgarbage()
    if self.split == 0 then
       error('No training mode when split is set to 0')
    end

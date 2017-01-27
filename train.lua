@@ -48,10 +48,10 @@ local function paramsForEpoch(epoch)
     end
     local regimes = {
         -- start, end,    LR,   WD,
-         {  1,      9,   1e-1,   5e-4, },
-         { 10,     19,   1e-2,   5e-4  },
-         { 20,     25,   1e-3,   0 },
-         { 26,     30,   1e-4,   0 },
+         {  1,      9,   5e-2,   5e-4, },
+         { 10,     19,   5e-3,   5e-4  },
+         { 20,     25,   5e-4,   0 },
+         { 26,     30,   5e-5,   0 },
 }
 
     for _, row in ipairs(regimes) do
@@ -108,8 +108,6 @@ function train()
 
    top1_epoch = top1_epoch * 100 / (opt.batchSize * opt.epochSize)
    loss_epoch = loss_epoch / opt.epochSize
-
-   return loss_epoch, top1_epoch
    
    print(string.format('Epoch: [%d][TRAINING SUMMARY] Total Time(s): %.2f\t'
                           .. 'average loss (per batch): %.2f \t '
@@ -125,6 +123,9 @@ function train()
    model:clearState()
    saveDataParallel(paths.concat(opt.save, 'model_' .. epoch .. '.t7'), model) -- defined in util.lua
    torch.save(paths.concat(opt.save, 'optimState_' .. epoch .. '.t7'), optimState)
+
+   return loss_epoch, top1_epoch
+
 end -- of train()
 -------------------------------------------------------------------------------------------
 -- GPU inputs (preallocate)

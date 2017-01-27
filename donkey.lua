@@ -58,26 +58,23 @@ local mean,std
 local augmenter = DataAugmenter{nGpu = opt.nGPU}
 
 -- function to load the image, jitter it appropriately (random crops etc.)
-jitter_cnt = 0
 local trainHook = function(self, path)
    collectgarbage()
    local input = (loadImage(path)):cuda()
-
    -- crop 
    input = augmenter:Crop(input)
 
    -- do data augmentation with probability opt.PaugTrain
-   --if torch.uniform() > opt.PaugTrain then 
+   if torch.uniform() > opt.PaugTrain then 
       --print(c.red 'Jittered!')
-     -- input = augmenter:Augment(input)
-     -- jitter_cnt = jitter_cnt + 1
-   --end
+      input = augmenter:Augment(input)
+   end
 
    assert(input:size(3) == opt.cropSize, 'image size and opt.cropSize dismatch')
    assert(input:size(2) == opt.cropSize, 'image size and opt.cropSize dismatch')
 
    -- mean/std
-   input = augmenter:Normalize(input)
+   --input = augmenter:Normalize(input)
    return input
 end
 
@@ -131,10 +128,10 @@ testHook = function(self, path)
    input = augmenter:Crop(input)
 
    -- do data augmentation with probability opt.PaugTest
-   --if torch.uniform() > opt.PaugTest then 
+   if torch.uniform() > opt.PaugTest then 
       --print(c.red 'Jittered!')
-     -- input = augmenter:Augment(input)
-   --end
+     input = augmenter:Augment(input)
+   end
 
    assert(input:size(3) == opt.cropSize, 'image size and opt.cropSize dismatch')
    assert(input:size(2) == opt.cropSize, 'image size and opt.cropSize dismatch')

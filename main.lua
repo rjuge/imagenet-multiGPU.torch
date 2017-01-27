@@ -42,10 +42,6 @@ paths.dofile('test.lua')
 epoch = opt.epochNumber
 
 -- Create loggers
-local train_loss = 0
-local val_loss = 0
-local top1_train = 0
-local top1_val = 0
 
 lossLogFileName = 'loss.log'
 perfLogFileName = 'perf.log'
@@ -57,7 +53,13 @@ lossLogger:setNames{'Training Loss','Validation Loss' }
 perfLogger = Logger(perfLoggerPath)
 perfLogger:setNames{'% top1 accuracy (train set)', '% top1 accuracy (val set)'}
 
+local train_loss = 0
+local val_loss = 0
+local top1_train = 0
+local top1_val = 0
+
 for i=1,opt.nEpochs do
+
    train_loss, top1_train = train()
    val_loss, top1_val = test()
 
@@ -71,6 +73,5 @@ for i=1,opt.nEpochs do
    perfLogger:plot()
 
    epoch = epoch + 1
-   train_loss, top1_train = 0,0
-   val_loss, top1_val = 0,0
+   collectgarbage()
 end
