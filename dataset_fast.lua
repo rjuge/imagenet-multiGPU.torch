@@ -101,11 +101,11 @@ function dataset:__init(...)
    local classPaths = tds.Hash()
    if self.forceClasses then
       print('Adding forceClasses class names')
-      classes_cnt = 0
+      self.classes_cnt = 0
       for k,v in pairs(self.forceClasses) do
          self.classes[tonumber(string.sub(k,6,-1))] = v
          classPaths[tonumber(string.sub(k,6,-1))] = tds.Hash()
-         classes_cnt = classes_cnt + 1
+         self.classes_cnt = self.classes_cnt + 1
       end
    end
 
@@ -131,7 +131,7 @@ function dataset:__init(...)
       dirpath = opt.data .. k .. '/'
       classPaths[tonumber(string.sub(k,6,-1))] = dirpath
    end
-   print(classes_cnt .. ' class names found')
+   print(self.classes_cnt .. ' class names found')
    self.classIndices = {}
    for k,v in pairs(self.classes) do
       self.classIndices[v] = k
@@ -186,8 +186,8 @@ function dataset:__init(...)
    print('Updating classList and imageClass appropriately')
    self.imageClass:resize(self.numSamples)
    local runningIndex = 0
-   for i=1,classes_cnt do
-      if self.verbose then xlua.progress(i, classes_cnt) end
+   for i=1,self.classes_cnt do
+      if self.verbose then xlua.progress(i, self.classes_cnt) end
       local clsLength = counts[classPaths[i]]
       if clsLength == 0 then
          error('Class has zero samples: ' .. self.classes[i])
@@ -210,7 +210,7 @@ function dataset:__init(...)
       self.classListSample = self.classListTrain
       local totalTestSamples = 0
       -- split the classList into classListTrain and classListTest
-      for i=1,classes_cnt do
+      for i=1,self.classes_cnt do
          local list = self.classList[i]
          count = self.classList[i]:size(1)
          local splitidx = math.floor((count * self.split / 100) + 0.5) -- +round
@@ -236,7 +236,7 @@ function dataset:__init(...)
       self.testIndicesSize = totalTestSamples
       local tdata = self.testIndices:data()
       local tidx = 0
-      for i=1,classes_cnt do
+      for i=1,self.classes_cnt do
          local list = self.classListTest[i]
          if list:dim() ~= 0 then
             local ldata = list:data()
@@ -332,7 +332,7 @@ function dataset:sample(quantity)
    local dataTable = {}
    local scalarTable = {}
    for _=1,quantity do
-      local class = torch.random(1, classes_cnt)
+      local class = torch.random(1, self.classes_cnt)
       local out = self:getByClass(class)
       dataTable[#dataTable + 1] = out
       scalarTable[#scalarTable + 1] = class

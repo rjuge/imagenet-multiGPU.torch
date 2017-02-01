@@ -74,7 +74,7 @@ local trainHook = function(self, path)
    assert(input:size(2) == opt.cropSize, 'image size and opt.cropSize dismatch')
 
    -- mean/std
-   --input = augmenter:Normalize(input)
+   input = augmenter:Normalize(input)
    return input
 end
 
@@ -83,9 +83,9 @@ if paths.filep(trainCache) then
    --print('TrainCache: ', trainCache)
    trainLoader = torch.load(trainCache)
    trainLoader.sampleHookTrain = trainHook
-   assert(trainLoader.paths[1] == paths.concat(opt.data, 'train'),
-          'cached files dont have the same path as opt.data. Remove your cached files at: '
-             .. trainCache .. ' and rerun the program')
+   --assert(trainLoader.paths[1] == paths.concat(opt.data, 'train'),
+     --     'cached files dont have the same path as opt.data. Remove your cached files at: '
+      --       .. trainCache .. ' and rerun the program')
 else
    print('Creating train metadata')
    trainLoader = dataLoader{
@@ -145,9 +145,9 @@ if paths.filep(testCache) then
    print('Loading test metadata from cache')
    testLoader = torch.load(testCache)
    testLoader.sampleHookTest = testHook
-   assert(testLoader.paths[1] == paths.concat(opt.data, 'val'),
-          'cached files dont have the same path as opt.data. Remove your cached files at: '
-             .. testCache .. ' and rerun the program')
+   --assert(testLoader.paths[1] == paths.concat(opt.data, 'val'),
+     --     'cached files dont have the same path as opt.data. Remove your cached files at: '
+       --      .. testCache .. ' and rerun the program')
 else
    print('Creating test metadata')
    testLoader = dataLoader{
