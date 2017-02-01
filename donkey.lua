@@ -22,8 +22,8 @@ paths.dofile('util.lua')
 ------------------------------------------
 
 -- a cache file of the training metadata (if doesnt exist, will be created)
-local trainCache = paths.concat(opt.cache, 'trainCache.t7')
-local testCache = paths.concat(opt.cache, 'testCache.t7')
+--local trainCache = paths.concat(opt.cache, 'trainCache.t7')
+--local testCache = paths.concat(opt.cache, 'testCache.t7')
 local meanstdCache = paths.concat(opt.cache, 'meanstdCache.t7')
 
 -- Check for existence of opt.data
@@ -33,7 +33,6 @@ end
 
 local loadSize   = {3, opt.imageSize, opt.imageSize}
 local sampleSize = {3, opt.cropSize, opt.cropSize}
-
 
 local function loadImage(path)
    local input = image.load(path, 3, 'float')
@@ -54,12 +53,11 @@ local mean,std
    which does class-balanced sampling from the dataset and does a random crop
 --]]
 
--- data augmenter
-local augmenter = DataAugmenter{nGpu = opt.nGPU}
 
 -- function to load the image, jitter it appropriately (random crops etc.)
 local trainHook = function(self, path)
-   collectgarbage()
+   print(c.red '!!!!! train Hook !!!!!')
+
    local input = (loadImage(path)):cuda()
    -- crop 
    input = augmenter:Crop(input)
@@ -74,31 +72,20 @@ local trainHook = function(self, path)
    assert(input:size(2) == opt.cropSize, 'image size and opt.cropSize dismatch')
 
    -- mean/std
-   --input = augmenter:Normalize(input)
+   input = augmenter:Normalize(input)
+   collectgarbage()
    return input
 end
 
-if paths.filep(trainCache) then
-   print(c.blue 'Loading train metadata from cache')
-   --print('TrainCache: ', trainCache)
-   trainLoader = torch.load(trainCache)
-   trainLoader.sampleHookTrain = trainHook
-   assert(trainLoader.paths[1] == paths.concat(opt.data, 'train'),
-          'cached files dont have the same path as opt.data. Remove your cached files at: '
-             .. trainCache .. ' and rerun the program')
-else
-   print('Creating train metadata')
-   trainLoader = dataLoader{
-      paths = {opt.data},
-      loadSize = loadSize,
-      sampleSize = sampleSize,
-      split = 98,
-      forceClasses = tableFromJSON,
-      verbose = true
-   }
-   torch.save(trainCache, trainLoader)
-   trainLoader.sampleHookTrain = trainHook
-end
+print('Creating train metadata')
+trainLoader = dataLoader{
+   paths = {opt.data},
+   loadSize = loadSize,
+   sampleSize = sampleSize,
+   split = 98,
+   forceClasses = tableFromJSON,
+   verbose = true
+}
 collectgarbage()
 
 -- do some sanity checks on trainLoader
@@ -120,8 +107,8 @@ end
 --]]
 
 -- function to load the image
-testHook = function(self, path)
-   collectgarbage()
+testHook = function(self, path) 
+   print(c.red '!!!!! test Hook !!!!!')
    local input = (loadImage(path)):cuda()
 
    -- crop
@@ -138,30 +125,21 @@ testHook = function(self, path)
 
    -- mean/std
    input = augmenter:Normalize(input)
+   collectgarbage()
    return input
 end
 
-if paths.filep(testCache) then
-   print('Loading test metadata from cache')
-   testLoader = torch.load(testCache)
-   testLoader.sampleHookTest = testHook
-   assert(testLoader.paths[1] == paths.concat(opt.data, 'val'),
-          'cached files dont have the same path as opt.data. Remove your cached files at: '
-             .. testCache .. ' and rerun the program')
-else
-   print('Creating test metadata')
-   testLoader = dataLoader{
-      paths = {opt.data},
-      loadSize = loadSize,
-      sampleSize = sampleSize,
-      split = 98,
-      verbose = true,
-      forceClasses = tableFromJSON
-   }
-   torch.save(testCache, testLoader)
-   testLoader.sampleHookTest = testHook
-end
+print('Creating test metadata')
+testLoader = dataLoader{
+   paths = {opt.data},
+   loadSize = loadSize,
+   sampleSize = sampleSize,
+   split = 98,
+   verbose = true,
+   forceClasses = tableFromJSON
+}
 collectgarbage()
+
 -- End of test loader section
 
 -- Estimate the per-channel mean/std (so that the loaders can normalize appropriately)

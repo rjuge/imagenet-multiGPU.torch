@@ -51,8 +51,9 @@ local function paramsForEpoch(epoch)
          {  1,      9,   5e-2,   5e-4, },
          { 10,     19,   5e-3,   5e-4  },
          { 20,     25,   5e-4,   0 },
-         { 26,     30,   5e-5,   0 },
-}
+         { 26,     1e8,   5e-5,   0 },
+       }
+ 
 
     for _, row in ipairs(regimes) do
         if epoch >= row[1] and epoch <= row[2] then
@@ -129,8 +130,8 @@ function train()
 end -- of train()
 -------------------------------------------------------------------------------------------
 -- GPU inputs (preallocate)
-local inputs = torch.CudaTensor()
-local labels = torch.CudaTensor()
+--local inputs = torch.CudaTensor()
+--local labels = torch.CudaTensor()
 
 local timer = torch.Timer()
 local dataTimer = torch.Timer()
@@ -138,15 +139,14 @@ local dataTimer = torch.Timer()
 local parameters, gradParameters = model:getParameters()
 
 -- 4. trainBatch - Used by train() to train a single batch after the data is loaded.
-function trainBatch(inputsCPU, labelsCPU)
+function trainBatch(inputs, labels)
    cutorch.synchronize()
-   collectgarbage()
    local dataLoadingTime = dataTimer:time().real
    timer:reset()
 
    -- transfer over to GPU
-   inputs:resize(inputsCPU:size()):copy(inputsCPU)
-   labels:resize(labelsCPU:size()):copy(labelsCPU)
+   --inputs:resize(inputsCPU:size()):copy(inputsCPU)
+   --labels:resize(labelsCPU:size()):copy(labelsCPU)
    local err, outputs
    feval = function(x)
       model:zeroGradParameters()
@@ -166,7 +166,7 @@ function trainBatch(inputsCPU, labelsCPU)
    do
       local _,prediction_sorted = outputs:float():sort(2, true) -- descending
       for i=1,opt.batchSize do
-	 if prediction_sorted[i][1] == labelsCPU[i] then
+	 if prediction_sorted[i][1] == labels[i] then
 	    top1_epoch = top1_epoch + 1;
 	    top1 = top1 + 1
 	 end
@@ -179,4 +179,5 @@ function trainBatch(inputsCPU, labelsCPU)
           optimState.learningRate, dataLoadingTime))
 
    dataTimer:reset()
+   collectgarbage()
 end

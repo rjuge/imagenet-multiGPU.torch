@@ -51,7 +51,6 @@ end
 --------------------------------------------------
 function DataAugmenter:Augment(input)
   --print("Augmenting")
-  --output = self.augmentationPipeline(input)
   input = self.augmentationPipeline(input)
   return input
   

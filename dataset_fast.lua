@@ -13,6 +13,11 @@ tds = require 'tds'
 local c = require 'trepl.colorize'
 local string = require 'string'
 require 'sort'
+require 'data_augmenter'
+
+-- data augmenter
+print(c.red 'Create data augmenter')
+local augmenter = DataAugmenter{nGpu = opt.nGPU}
 
 local dataset = torch.class('dataLoader')
 
@@ -94,7 +99,7 @@ function dataset:__init(...)
 
    if not self.sampleHookTrain then self.sampleHookTrain = self.defaultSampleHook end
    if not self.sampleHookTest then self.sampleHookTest = self.defaultSampleHook end
-
+   
    -- find class names
    print('finding class names')
    self.classes = {}
@@ -296,9 +301,11 @@ end
 function dataset:getByClass(class)
    local index = math.ceil(torch.uniform() * self.classListSample[class]:nElement())
    local imgpath = ffi.string(torch.data(self.imagePath[self.classListSample[class][index]]))
-   return self:sampleHookTrain(imgpath)
+   return loadImage(imgpath)
 end
 
+local dataCuda = torch.CudaTensor()
+local labelsCuda = torch.CudaTensor()
 -- converts a table of samples (and corresponding labels) to a clean tensor
 local function tableToOutput(self, dataTable, scalarTable)
    local data, scalarLabels
@@ -310,21 +317,23 @@ local function tableToOutput(self, dataTable, scalarTable)
       data = dataTable[1]
       scalarLabels = scalarTable[1]
    else
-      data = torch.Tensor(quantity * samplesPerDraw,
+      dataCuda:resize(quantity * samplesPerDraw,
                           self.sampleSize[1], self.sampleSize[2], self.sampleSize[3])
-      scalarLabels = torch.LongTensor(quantity * samplesPerDraw)
+      labelsCuda:resize(quantity * samplesPerDraw)
       for i=1,#dataTable do
          local idx = (i-1)*samplesPerDraw
-         data[{{idx+1,idx+samplesPerDraw}}]:copy(dataTable[i])
-         scalarLabels[{{idx+1,idx+samplesPerDraw}}]:fill(scalarTable[i])
+	 -- do crop
+	 local imCropCuda = augmenter:Crop(dataTable[i]:cuda())
+	 dataCuda[{{idx+1,idx+samplesPerDraw}}]:copy(imCropCuda)
+         labelsCuda[{{idx+1,idx+samplesPerDraw}}] = scalarTable[i]
       end
    end
-   return data, scalarLabels
+   collectgarbage()
+   return dataCuda, labelsCuda
 end
 
 -- sampler, samples from the training set.
 function dataset:sample(quantity)
-   collectgarbage()
    if self.split == 0 then
       error('No training mode when split is set to 0')
    end
@@ -337,7 +346,15 @@ function dataset:sample(quantity)
       dataTable[#dataTable + 1] = out
       scalarTable[#scalarTable + 1] = class
    end
-   local data, scalarLabels = tableToOutput(self, dataTable, scalarTable)
+   local data, scalarLabels = tableToOutput(self, dataTable, scalarTable) 
+   -- do augmentation
+   for i=1,data:size(1) do 
+      if torch.uniform() > opt.PaugTrain then
+	 data[i] = augmenter:Augment(data[i])
+      end
+      data[i] = augmenter:Normalize(data[i])
+   end
+   
    return data, scalarLabels
 end
 
@@ -365,11 +382,19 @@ function dataset:get(i1, i2)
       -- load the sample
       local idx = self.testIndices[indices[i]]
       local imgpath = ffi.string(torch.data(self.imagePath[idx]))
-      local out = self:sampleHookTest(imgpath)
+      local out = loadImage(imgpath)
       table.insert(dataTable, out)
       table.insert(scalarTable, self.imageClass[idx])
    end
-   local data, scalarLabels = tableToOutput(self, dataTable, scalarTable)
+   local data, scalarLabels = tableToOutput(self, dataTable, scalarTable) 
+   -- do augmentation
+   for i=1,data:size(1) do 
+      if torch.uniform() > opt.PaugTest then
+	 data[i] = augmenter:Augment(data[i])
+      end
+      data[i] = augmenter:Normalize(data[i])
+   end
+   collectgarbage()
    return data, scalarLabels
 end
 
@@ -387,6 +412,20 @@ function dataset:test(quantity)
          return data, scalarLabelss
       end
    end
+end
+
+local loadSize   = {3, opt.imageSize, opt.imageSize}
+local sampleSize = {3, opt.cropSize, opt.cropSize}
+
+function loadImage(path)
+   local input = image.load(path, 3, 'float')
+   -- find the smaller dimension, and resize it to loadSize (while keeping aspect ratio)
+   if input:size(3) < input:size(2) then
+      input = image.scale(input, loadSize[2], loadSize[3] * input:size(2) / input:size(3))
+   else
+      input = image.scale(input, loadSize[2] * input:size(3) / input:size(2), loadSize[3])
+   end
+   return input
 end
 
 return dataset
