@@ -51,7 +51,7 @@ local function paramsForEpoch(epoch)
          {  1,      9,   1e-1,   5e-4, },
          { 10,     19,   1e-2,   5e-4  },
          { 20,     25,   1e-3,   0 },
-         { 26,     1e8,   1e-4,   0 },
+         { 26,     1e8,   1e-5,   0 },
 }
 
     for _, row in ipairs(regimes) do
@@ -127,7 +127,7 @@ function train()
 	modelToSave = deepCopy(modelToSave):float():clearState()
 	cudnn.convert(modelToSave,nn)
 	modelToSave = modelToSave:float()
-	torch.save(paths.concat(opt.save, 'model_' .. epoch .. '.t7'), model)
+	torch.save(paths.concat(opt.save, 'model_' .. epoch .. '.t7'), modelToSave)
 
 	modelToSave = nil
 	collectgarbage()
