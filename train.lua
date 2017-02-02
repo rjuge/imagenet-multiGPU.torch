@@ -7,7 +7,7 @@
 --  of patent rights can be found in the PATENTS file in the same directory.
 --
 require 'optim'
-
+require 'util'
 --[[
    1. Setup SGD optimization state and learning rate schedule
    2. Create loggers.
@@ -48,10 +48,10 @@ local function paramsForEpoch(epoch)
     end
     local regimes = {
         -- start, end,    LR,   WD,
-         {  1,      9,   5e-2,   5e-4, },
-         { 10,     19,   5e-3,   5e-4  },
-         { 20,     25,   5e-4,   0 },
-         { 26,     1e8,   5e-5,   0 },
+         {  1,      9,   1e-1,   5e-4, },
+         { 10,     19,   1e-2,   5e-4  },
+         { 20,     25,   1e-3,   0 },
+         { 26,     1e8,   1e-4,   0 },
        }
  
 
@@ -121,8 +121,18 @@ function train()
 
    -- clear the intermediate states in the model before saving to disk
    -- this saves lots of disk space
-   model:clearState()
-   saveDataParallel(paths.concat(opt.save, 'model_' .. epoch .. '.t7'), model) -- defined in util.lua
+   --model:clearState()
+   --saveDataParallel(paths.concat(opt.save, 'model_' .. epoch .. '.t7'), model) --
+   --defined in util.lua
+   local modelToSave = saveDataParallel(model)
+   modelToSave = deepCopy(modelToSave):float():clearState()
+   cudnn.convert(modelToSave,nn)
+   modelToSave = modelToSave:float()
+   torch.save(paths.concat(opt.save, 'model_' .. epoch .. '.t7'), modelToSave)
+   
+   modelToSave = nil
+   collectgarbage()
+
    torch.save(paths.concat(opt.save, 'optimState_' .. epoch .. '.t7'), optimState)
 
    return loss_epoch, top1_epoch
@@ -130,8 +140,8 @@ function train()
 end -- of train()
 -------------------------------------------------------------------------------------------
 -- GPU inputs (preallocate)
---local inputs = torch.CudaTensor()
---local labels = torch.CudaTensor()
+local inputs = torch.CudaTensor()
+local labels = torch.CudaTensor()
 
 local timer = torch.Timer()
 local dataTimer = torch.Timer()
@@ -139,14 +149,15 @@ local dataTimer = torch.Timer()
 local parameters, gradParameters = model:getParameters()
 
 -- 4. trainBatch - Used by train() to train a single batch after the data is loaded.
-function trainBatch(inputs, labels)
+function trainBatch(inputsCPU, labelsCPU)
    cutorch.synchronize()
+   collectgarbage()	
    local dataLoadingTime = dataTimer:time().real
    timer:reset()
 
    -- transfer over to GPU
-   --inputs:resize(inputsCPU:size()):copy(inputsCPU)
-   --labels:resize(labelsCPU:size()):copy(labelsCPU)
+   inputs:resize(inputsCPU:size()):copy(inputsCPU)
+   labels:resize(labelsCPU:size()):copy(labelsCPU)
    local err, outputs
    feval = function(x)
       model:zeroGradParameters()
@@ -166,7 +177,7 @@ function trainBatch(inputs, labels)
    do
       local _,prediction_sorted = outputs:float():sort(2, true) -- descending
       for i=1,opt.batchSize do
-	 if prediction_sorted[i][1] == labels[i] then
+	 if prediction_sorted[i][1] == labelsCPU[i] then
 	    top1_epoch = top1_epoch + 1;
 	    top1 = top1 + 1
 	 end
@@ -179,5 +190,4 @@ function trainBatch(inputs, labels)
           optimState.learningRate, dataLoadingTime))
 
    dataTimer:reset()
-   collectgarbage()
 end

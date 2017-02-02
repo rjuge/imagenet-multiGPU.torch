@@ -244,9 +244,9 @@ function A.RandomCropPad(size, padding)
       end
 
       local x1, y1 = torch.random(0, w - size), torch.random(0, h - size)
-      local out = image.crop(input, x1, y1, x1 + size, y1 + size)
-      assert(out:size(2) == size and out:size(3) == size, 'wrong crop size')
-      return out
+      input = image.crop(input, x1, y1, x1 + size, y1 + size)
+      assert(input:size(2) == size and input:size(3) == size, 'wrong crop size')
+      return input
    end
 end
 

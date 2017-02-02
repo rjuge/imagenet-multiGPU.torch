@@ -34,13 +34,13 @@ local function cleanDPT(module)
    -- This assumes this DPT was created by the function above: all the
    -- module.modules are clones of the same network on different GPUs
    -- hence we only need to keep one when saving the model to the disk.
-   local newDPT = nn.DataParallelTable(1)
-   cutorch.setDevice(opt.GPU)
-   newDPT:add(module:get(1), opt.GPU)
-   return newDPT
+   --local newDPT = nn.DataParallelTable(1)
+   --cutorch.setDevice(opt.GPU)
+   --newDPT:add(module:get(1), opt.GPU)
+   return module:get(1)
 end
 
-function saveDataParallel(filename, model)
+function saveDataParallel(model)
    if torch.type(model) == 'nn.DataParallelTable' then
       torch.save(filename, cleanDPT(model))
    elseif torch.type(model) == 'nn.Sequential' then
@@ -52,7 +52,7 @@ function saveDataParallel(filename, model)
             temp_model:add(module)
          end
       end
-      torch.save(filename, temp_model)
+      return temp_model
    else
       error('This saving function only works with Sequential or DataParallelTable modules.')
    end
@@ -76,3 +76,20 @@ function loadDataParallel(filename, nGPU)
       error('The loaded model is not a Sequential or DataParallelTable module.')
    end
 end
+
+function deepCopy(tbl)
+   -- creates a copy of a network with new modules and the same tensors
+   local copy = {}
+   for k, v in pairs(tbl) do
+      if type(v) == 'table' then
+         copy[k] = deepCopy(v)
+      else
+         copy[k] = v
+      end
+   end
+   if torch.typename(tbl) then
+      torch.setmetatable(copy, torch.typename(tbl))
+   end
+   return copy
+end
+

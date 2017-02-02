@@ -13,11 +13,6 @@ tds = require 'tds'
 local c = require 'trepl.colorize'
 local string = require 'string'
 require 'sort'
-require 'data_augmenter'
-
--- data augmenter
-print(c.red 'Create data augmenter')
-local augmenter = DataAugmenter{nGpu = opt.nGPU}
 
 local dataset = torch.class('dataLoader')
 
@@ -106,11 +101,11 @@ function dataset:__init(...)
    local classPaths = tds.Hash()
    if self.forceClasses then
       print('Adding forceClasses class names')
-      classes_cnt = 0
+      self.classes_cnt = 0
       for k,v in pairs(self.forceClasses) do
          self.classes[tonumber(string.sub(k,6,-1))] = v
          classPaths[tonumber(string.sub(k,6,-1))] = tds.Hash()
-         classes_cnt = classes_cnt + 1
+         self.classes_cnt = self.classes_cnt + 1
       end
    end
 
@@ -136,7 +131,7 @@ function dataset:__init(...)
       dirpath = opt.data .. k .. '/'
       classPaths[tonumber(string.sub(k,6,-1))] = dirpath
    end
-   print(classes_cnt .. ' class names found')
+   print(self.classes_cnt .. ' class names found')
    self.classIndices = {}
    for k,v in pairs(self.classes) do
       self.classIndices[v] = k
@@ -191,8 +186,8 @@ function dataset:__init(...)
    print('Updating classList and imageClass appropriately')
    self.imageClass:resize(self.numSamples)
    local runningIndex = 0
-   for i=1,classes_cnt do
-      if self.verbose then xlua.progress(i, classes_cnt) end
+   for i=1,self.classes_cnt do
+      if self.verbose then xlua.progress(i, self.classes_cnt) end
       local clsLength = counts[classPaths[i]]
       if clsLength == 0 then
          error('Class has zero samples: ' .. self.classes[i])
@@ -215,7 +210,7 @@ function dataset:__init(...)
       self.classListSample = self.classListTrain
       local totalTestSamples = 0
       -- split the classList into classListTrain and classListTest
-      for i=1,classes_cnt do
+      for i=1,self.classes_cnt do
          local list = self.classList[i]
          count = self.classList[i]:size(1)
          local splitidx = math.floor((count * self.split / 100) + 0.5) -- +round
@@ -241,7 +236,7 @@ function dataset:__init(...)
       self.testIndicesSize = totalTestSamples
       local tdata = self.testIndices:data()
       local tidx = 0
-      for i=1,classes_cnt do
+      for i=1,self.classes_cnt do
          local list = self.classListTest[i]
          if list:dim() ~= 0 then
             local ldata = list:data()
@@ -301,11 +296,9 @@ end
 function dataset:getByClass(class)
    local index = math.ceil(torch.uniform() * self.classListSample[class]:nElement())
    local imgpath = ffi.string(torch.data(self.imagePath[self.classListSample[class][index]]))
-   return loadImage(imgpath)
+   return self:sampleHookTrain(imgpath)
 end
 
-local dataCuda = torch.CudaTensor()
-local labelsCuda = torch.CudaTensor()
 -- converts a table of samples (and corresponding labels) to a clean tensor
 local function tableToOutput(self, dataTable, scalarTable)
    local data, scalarLabels
@@ -317,19 +310,16 @@ local function tableToOutput(self, dataTable, scalarTable)
       data = dataTable[1]
       scalarLabels = scalarTable[1]
    else
-      dataCuda:resize(quantity * samplesPerDraw,
+      data = torch.Tensor(quantity * samplesPerDraw,
                           self.sampleSize[1], self.sampleSize[2], self.sampleSize[3])
-      labelsCuda:resize(quantity * samplesPerDraw)
+      scalarLabels = torch.LongTensor(quantity * samplesPerDraw)
       for i=1,#dataTable do
          local idx = (i-1)*samplesPerDraw
-	 -- do crop
-	 local imCropCuda = augmenter:Crop(dataTable[i]:cuda())
-	 dataCuda[{{idx+1,idx+samplesPerDraw}}]:copy(imCropCuda)
-         labelsCuda[{{idx+1,idx+samplesPerDraw}}] = scalarTable[i]
+	 data[{{idx+1,idx+samplesPerDraw}}]:copy(dataTable[i])
+         scalarLabels[{{idx+1,idx+samplesPerDraw}}]:fill(scalarTable[i])
       end
    end
-   collectgarbage()
-   return dataCuda, labelsCuda
+   return data, scalarLabels
 end
 
 -- sampler, samples from the training set.
@@ -341,20 +331,12 @@ function dataset:sample(quantity)
    local dataTable = {}
    local scalarTable = {}
    for _=1,quantity do
-      local class = torch.random(1, classes_cnt)
+      local class = torch.random(1, self.classes_cnt)
       local out = self:getByClass(class)
       dataTable[#dataTable + 1] = out
       scalarTable[#scalarTable + 1] = class
    end
    local data, scalarLabels = tableToOutput(self, dataTable, scalarTable) 
-   -- do augmentation
-   for i=1,data:size(1) do 
-      if torch.uniform() > opt.PaugTrain then
-	 data[i] = augmenter:Augment(data[i])
-      end
-      data[i] = augmenter:Normalize(data[i])
-   end
-   
    return data, scalarLabels
 end
 
@@ -382,18 +364,11 @@ function dataset:get(i1, i2)
       -- load the sample
       local idx = self.testIndices[indices[i]]
       local imgpath = ffi.string(torch.data(self.imagePath[idx]))
-      local out = loadImage(imgpath)
+      local out = self:sampleHookTrain(imgpath)
       table.insert(dataTable, out)
       table.insert(scalarTable, self.imageClass[idx])
    end
    local data, scalarLabels = tableToOutput(self, dataTable, scalarTable) 
-   -- do augmentation
-   for i=1,data:size(1) do 
-      if torch.uniform() > opt.PaugTest then
-	 data[i] = augmenter:Augment(data[i])
-      end
-      data[i] = augmenter:Normalize(data[i])
-   end
    collectgarbage()
    return data, scalarLabels
 end
@@ -412,20 +387,6 @@ function dataset:test(quantity)
          return data, scalarLabelss
       end
    end
-end
-
-local loadSize   = {3, opt.imageSize, opt.imageSize}
-local sampleSize = {3, opt.cropSize, opt.cropSize}
-
-function loadImage(path)
-   local input = image.load(path, 3, 'float')
-   -- find the smaller dimension, and resize it to loadSize (while keeping aspect ratio)
-   if input:size(3) < input:size(2) then
-      input = image.scale(input, loadSize[2], loadSize[3] * input:size(2) / input:size(3))
-   else
-      input = image.scale(input, loadSize[2] * input:size(3) / input:size(2), loadSize[3])
-   end
-   return input
 end
 
 return dataset
