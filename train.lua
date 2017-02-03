@@ -51,8 +51,9 @@ local function paramsForEpoch(epoch)
          {  1,      9,   1e-1,   5e-4, },
          { 10,     19,   1e-2,   5e-4  },
          { 20,     25,   1e-3,   0 },
-         { 26,     1e8,   1e-5,   0 },
-}
+         { 26,     1e8,   1e-4,   0 },
+       }
+ 
 
     for _, row in ipairs(regimes) do
         if epoch >= row[1] and epoch <= row[2] then
@@ -122,16 +123,15 @@ function train()
    -- this saves lots of disk space
    --model:clearState()
    --saveDataParallel(paths.concat(opt.save, 'model_' .. epoch .. '.t7'), model) --
- 	--defined in util.lua
-	local modelToSave = saveDataParallel(model)
-	modelToSave = deepCopy(modelToSave):float():clearState()
-	cudnn.convert(modelToSave,nn)
-	modelToSave = modelToSave:float()
-	torch.save(paths.concat(opt.save, 'model_' .. epoch .. '.t7'), modelToSave)
-
-	modelToSave = nil
-	collectgarbage()
-
+   --defined in util.lua
+   local modelToSave = saveDataParallel(model)
+   modelToSave = deepCopy(modelToSave):float():clearState()
+   cudnn.convert(modelToSave,nn)
+   modelToSave = modelToSave:float()
+   torch.save(paths.concat(opt.save, 'model_' .. epoch .. '.t7'), modelToSave)
+   
+   modelToSave = nil
+   collectgarbage()
 
    torch.save(paths.concat(opt.save, 'optimState_' .. epoch .. '.t7'), optimState)
 
@@ -151,7 +151,7 @@ local parameters, gradParameters = model:getParameters()
 -- 4. trainBatch - Used by train() to train a single batch after the data is loaded.
 function trainBatch(inputsCPU, labelsCPU)
    cutorch.synchronize()
-   collectgarbage()
+   collectgarbage()	
    local dataLoadingTime = dataTimer:time().real
    timer:reset()
 

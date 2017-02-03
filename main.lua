@@ -59,7 +59,7 @@ local top1_train = 0
 local top1_val = 0
 
 for i=1,opt.nEpochs do
-
+   
    train_loss, top1_train = train()
    val_loss, top1_val = test()
 

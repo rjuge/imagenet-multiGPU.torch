@@ -34,7 +34,6 @@ end
 local loadSize   = {3, opt.imageSize, opt.imageSize}
 local sampleSize = {3, opt.cropSize, opt.cropSize}
 
-
 local function loadImage(path)
    local input = image.load(path, 3, 'float')
    -- find the smaller dimension, and resize it to loadSize (while keeping aspect ratio)
@@ -59,7 +58,7 @@ local augmenter = DataAugmenter{nGpu = opt.nGPU}
 
 -- function to load the image, jitter it appropriately (random crops etc.)
 local trainHook = function(self, path)
-   collectgarbage()
+
    local input = (loadImage(path)):cuda()
    -- crop 
    input = augmenter:Crop(input)
@@ -120,8 +119,7 @@ end
 --]]
 
 -- function to load the image
-testHook = function(self, path)
-   collectgarbage()
+testHook = function(self, path) 
    local input = (loadImage(path)):cuda()
 
    -- crop
@@ -138,6 +136,7 @@ testHook = function(self, path)
 
    -- mean/std
    input = augmenter:Normalize(input)
+   collectgarbage()
    return input
 end
 
@@ -162,6 +161,7 @@ else
    testLoader.sampleHookTest = testHook
 end
 collectgarbage()
+
 -- End of test loader section
 
 -- Estimate the per-channel mean/std (so that the loaders can normalize appropriately)

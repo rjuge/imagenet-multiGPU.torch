@@ -1,4 +1,5 @@
 require 'hzproc'
+require 'nn'
 
 local A = {}
 local gaussianblurlayers = {}
@@ -243,9 +244,9 @@ function A.RandomCropPad(size, padding)
       end
 
       local x1, y1 = torch.random(0, w - size), torch.random(0, h - size)
-      local out = image.crop(input, x1, y1, x1 + size, y1 + size)
-      assert(out:size(2) == size and out:size(3) == size, 'wrong crop size')
-      return out
+      input = image.crop(input, x1, y1, x1 + size, y1 + size)
+      assert(input:size(2) == size and input:size(3) == size, 'wrong crop size')
+      return input
    end
 end
 
@@ -336,6 +337,7 @@ function A.HorizontalFlip(bool)
       if bool == true then 
 	 input = hzproc.Flip.Horizon(input)
       end
+      collectgarbage()
       return input
    end
 end
@@ -349,7 +351,8 @@ function A.Affine(deg, xshear, yshear, scale)
 	 torch.mm(affine,affine, hzproc.Affine.ShearArround(xshear, yshear, input:size(3)/2, input:size(2)/2))
 	 -- affine mapping
 	 input = hzproc.Transform.Fast(input, affine); 
-      end
+      end  
+      collectgarbage()
       return input
    end
 end

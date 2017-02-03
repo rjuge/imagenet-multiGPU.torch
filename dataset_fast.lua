@@ -94,7 +94,7 @@ function dataset:__init(...)
 
    if not self.sampleHookTrain then self.sampleHookTrain = self.defaultSampleHook end
    if not self.sampleHookTest then self.sampleHookTest = self.defaultSampleHook end
-
+   
    -- find class names
    print('finding class names')
    self.classes = {}
@@ -315,7 +315,7 @@ local function tableToOutput(self, dataTable, scalarTable)
       scalarLabels = torch.LongTensor(quantity * samplesPerDraw)
       for i=1,#dataTable do
          local idx = (i-1)*samplesPerDraw
-         data[{{idx+1,idx+samplesPerDraw}}]:copy(dataTable[i])
+	 data[{{idx+1,idx+samplesPerDraw}}]:copy(dataTable[i])
          scalarLabels[{{idx+1,idx+samplesPerDraw}}]:fill(scalarTable[i])
       end
    end
@@ -324,7 +324,6 @@ end
 
 -- sampler, samples from the training set.
 function dataset:sample(quantity)
-   collectgarbage()
    if self.split == 0 then
       error('No training mode when split is set to 0')
    end
@@ -337,7 +336,7 @@ function dataset:sample(quantity)
       dataTable[#dataTable + 1] = out
       scalarTable[#scalarTable + 1] = class
    end
-   local data, scalarLabels = tableToOutput(self, dataTable, scalarTable)
+   local data, scalarLabels = tableToOutput(self, dataTable, scalarTable) 
    return data, scalarLabels
 end
 
@@ -365,11 +364,12 @@ function dataset:get(i1, i2)
       -- load the sample
       local idx = self.testIndices[indices[i]]
       local imgpath = ffi.string(torch.data(self.imagePath[idx]))
-      local out = self:sampleHookTest(imgpath)
+      local out = self:sampleHookTrain(imgpath)
       table.insert(dataTable, out)
       table.insert(scalarTable, self.imageClass[idx])
    end
-   local data, scalarLabels = tableToOutput(self, dataTable, scalarTable)
+   local data, scalarLabels = tableToOutput(self, dataTable, scalarTable) 
+   collectgarbage()
    return data, scalarLabels
 end
 
