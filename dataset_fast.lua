@@ -109,22 +109,6 @@ function dataset:__init(...)
       end
    end
 
-
-   -- loop over each paths folder, get list of unique class names,
-   -- also store the directory paths per class
-   -- for each class,
-   --[[
-   print('Adding all path folders')
-   for _,path in ipairs(self.paths) do
-      for dirpath in paths.iterdirs(path) do
-         dirpath = path .. '/' .. dirpath
-         local class = paths.basename(dirpath)
-         self.classes[#self.classes + 1] = class
-         classPaths[#classPaths + 1] = dirpath
-      end
-   end
-   --]]
-
    -- modified loop over each paths folder, get list of unique class names
    print('Adding all path folders')
    for k,_ in pairs(self.forceClasses) do
@@ -364,7 +348,7 @@ function dataset:get(i1, i2)
       -- load the sample
       local idx = self.testIndices[indices[i]]
       local imgpath = ffi.string(torch.data(self.imagePath[idx]))
-      local out = self:sampleHookTrain(imgpath)
+      local out = self:sampleHookTest(imgpath)
       table.insert(dataTable, out)
       table.insert(scalarTable, self.imageClass[idx])
    end

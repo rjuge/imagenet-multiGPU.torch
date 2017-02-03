@@ -24,17 +24,17 @@ function M.parse(arg)
     cmd:option('-backend',     'cudnn', 'Options: cudnn | nn')
     cmd:option('-cudnnAutotune',     1, 'Enable the cudnn auto tune feature Options: 1 | 0')
     ------------- Data options ------------------------
-    cmd:option('-nDonkeys',        8, 'number of donkeys to initialize (data loading threads)')
+    cmd:option('-nDonkeys',        1, 'number of donkeys to initialize (data loading threads)')
     cmd:option('-imageSize',         256,    'Smallest side of the resized image')
     cmd:option('-cropSize',          224,    'Height and Width of image crop to be used as input layer')
     cmd:option('-nClasses',        331, 'number of classes in the dataset')
     cmd:option('-PaugTrain',        0.5, 'probability of data augmentation for training')
-    cmd:option('-PaugTest',        0.25, 'probability of data augmentation for testing')
+    cmd:option('-PaugTest',        0.5, 'probability of data augmentation for testing')
     ------------- Training options --------------------
     cmd:option('-nEpochs',         50,    ' Number of total epochs to run')
     -- cmd:option('-epochSize',       20000, 'Number of batches per epoch') 	-- for batch size 64
     --cmd:option('-epochSize',       7800, 'Number of batches per epoch') 	-- for batch size 64
-    cmd:option('-epochSize',     3876, ' Number of batches per epoch')	-- for batch size 128
+    cmd:option('-epochSize',     3900, ' Number of batches per epoch')	-- for batch size 128
     --cmd:option('-epochSize',     1900, 'Number of batches per epoch')	-- for batch size 256
     cmd:option('-epochNumber',     1,     'Manual epoch number (useful on restarts)')
     cmd:option('-batchSize',       128,   'mini-batch size (1 = pure stochastic)')

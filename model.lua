@@ -21,7 +21,7 @@ require 'optim'
 if opt.retrain ~= 'none' then
    assert(paths.filep(opt.retrain), 'File not found: ' .. opt.retrain)
    print('Loading model from file: ' .. opt.retrain);
-   model = loadDataParallel(opt.retrain, opt.nGPU) -- defined in util.lua
+   model = loadDataParallel(opt.retrain, opt.nGPU):cuda() -- defined in util.lua
 else
    paths.dofile('models/' .. opt.netType .. '.lua')
    print('=> Creating model from file: models/' .. opt.netType .. '.lua')
