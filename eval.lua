@@ -20,7 +20,6 @@ end
 print '==> Loading Model'
 
 convnet = torch.load(args.model)
-
 convnet = convnet:cuda()
 convnet:evaluate()
 
@@ -31,8 +30,11 @@ local img = image.load(args.probe, 3)
 img = imgPreProcess(img):cuda()
 
 print '==> Attempting Forward Pass...'
-out = convnet:forward(img)
+outputs = convnet:forward(img)
+local pred = outputs:float()
 
-print (out)
+local _, pred_sorted = pred:sort(2, true)
+print(pred_sorted[1])
+
 --l = convnet:get(1):get(1):get(41)
 --print(l.output:resize(l.output:size(2)))
