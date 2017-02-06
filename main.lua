@@ -49,25 +49,27 @@ lossLoggerPath = paths.concat(opt.save, lossLogFileName)
 perfLoggerPath = paths.concat(opt.save, perfLogFileName)
 print("Initializing Loggers: ", lossLogFileName, perfLogFileName)
 lossLogger = Logger(lossLoggerPath)
-lossLogger:setNames{'Training Loss','Validation Loss' }
+lossLogger:setNames{'Training Loss','Aug Validation Loss','Validation Loss' }
 perfLogger = Logger(perfLoggerPath)
-perfLogger:setNames{'% top1 accuracy (train set)', '% top1 accuracy (val set)'}
+perfLogger:setNames{'% top1 accuracy (train set)', '% top1 accuracy (Aug val set)', '% top1 accuracy (val set)'}
 
 local train_loss = 0
+local aug_val_loss = 0
 local val_loss = 0
 local top1_train = 0
+local aug_top1_val = 0
 local top1_val = 0
 
 for i=1,opt.nEpochs do
-   
    train_loss, top1_train = train()
-   val_loss, top1_val = test()
+   aug_val_loss, aug_top1_val = test(opt.PaugTest)
+   val_loss, top1_val = test(0.0) -- test without augmentations
 
-   lossLogger:add{train_loss, val_loss}
-   lossLogger:style{'-', '-'}
+   lossLogger:add{train_loss, aug_val_loss, val_loss}
+   lossLogger:style{'-', '-', '-'}
 
-   perfLogger:add{top1_train, top1_val} 
-   perfLogger:style{'-', '-'}
+   perfLogger:add{top1_train, aug_top1_val, top1_val} 
+   perfLogger:style{'-', '-', '-'}
 
    lossLogger:plot()
    perfLogger:plot()

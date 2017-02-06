@@ -37,8 +37,8 @@ function DataAugmenter:__init(opt)
   self.augmentationPipeline = Augmentations.Compose
   {
     Augmentations.RandomLightning(0.80, self.pca),
-    Augmentations.RandomHueJitter(0.5),
-    Augmentations.RandomTinge(0.3),
+    Augmentations.RandomHueJitter(0.6),
+    Augmentations.RandomTinge(0.5),
     Augmentations.RandomBlurAndNoise(0.50, 0.75),
     Augmentations.RandomHorizontalFlip(0.5),
     Augmentations.RandomAffine(0.85),
@@ -67,6 +67,7 @@ function DataAugmenter:Crop(input)
    -- crop
    x1, y1 = torch.random(0, iW - oW), torch.random(0, iH - oH)
    input = hzproc.Crop.Fast(input, oW, oH, x1, y1, x1+oW, y1+oH)
+   collectgarbage()
    return input
 end
 
@@ -75,10 +76,11 @@ function DataAugmenter:Normalize(input)
    --imagenet mean and std
    local mean = self.meanstd['mean']
    local std = self.meanstd['std']
-
+   
    for i=1,3 do -- channels
       input[{{i},{},{}}]:add(-mean[i])
       input[{{i},{},{}}]:div(std[i]) 
    end
+   collectgarbage()
    return input
 end

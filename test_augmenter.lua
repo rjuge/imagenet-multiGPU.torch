@@ -11,7 +11,7 @@ torch.setdefaulttensortype('torch.FloatTensor')
 
 nGpu = 1
 local augmenter = DataAugmenter{nGpu = nGpu}
-probe = image.load('lena.jpg')
+probe = image.load('teapot.jpg')
 probe = image.scale(probe, 256, 256):cuda()
 
 for i=1, 50 do

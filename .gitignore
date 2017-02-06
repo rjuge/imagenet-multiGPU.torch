@@ -4,4 +4,14 @@ tinyimagenet/
 tinyimagenetdataset/
 augmenterTestOut/
 horusimagenetv1/
+horusimagenetv2/
 *.jpg
+*.t7
+*.sh
+*~
+tiny_horusimagenet_v1dataset
+tiny_horusimagenet_v2dataset
+tiny_horustestbench_dataset
+video/
+misc/
+classifiers/

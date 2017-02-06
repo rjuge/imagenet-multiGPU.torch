@@ -324,7 +324,7 @@ function dataset:sample(quantity)
    return data, scalarLabels
 end
 
-function dataset:get(i1, i2)
+function dataset:get(i1, i2, pTest)
    local indices, quantity
    if type(i1) == 'number' then
       if type(i2) == 'number' then -- range of indices
@@ -348,7 +348,7 @@ function dataset:get(i1, i2)
       -- load the sample
       local idx = self.testIndices[indices[i]]
       local imgpath = ffi.string(torch.data(self.imagePath[idx]))
-      local out = self:sampleHookTest(imgpath)
+      local out = self:sampleHookTest(imgpath, pTest)
       table.insert(dataTable, out)
       table.insert(scalarTable, self.imageClass[idx])
    end

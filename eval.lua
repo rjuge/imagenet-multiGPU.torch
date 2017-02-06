@@ -3,38 +3,54 @@ require 'nn'
 require 'cunn'
 require 'cudnn'
 require 'image'
+display = require 'display'
 
 local pl = require('pl.import_into')()
+
+local topN = 5
 
 local args = pl.lapp([[
   -m,--model    (default 'model.t7')
   -p,--probe    (default 'probe.jpg')
 ]])
 
-function imgPreProcess(img)
-  img = image.scale(img, 224,224)
-  return img:view(1, img:size(1), img:size(2), img:size(3))
+function imgPreProcess(im)
+   im = image.scale(im, 224,224)
+   for i=1,3 do -- channels
+      if model.img_mean then im[i]:add(-model.img_mean[i]) end
+      if model.img_std then im[i]:div(model.img_std[i]) end
+   end
+   if(model.tensor_dim == 4) then
+      im:view(1, im:size(1), im:size(2), im:size(3))
+   end
+   return im
 end
 
-  
+model = torch.load(args.model)
 print '==> Loading Model'
+model.convnet:add(nn.SoftMax())
+model.convnet:cuda()
+model.convnet:evaluate()
 
-convnet = torch.load(args.model)
-convnet = convnet:cuda()
-convnet:evaluate()
-
-print(convnet)
+print(model.convnet)
 
 print '==> Loading and Preprocessing Input Image...'
 local img = image.load(args.probe, 3)
 img = imgPreProcess(img):cuda()
 
 print '==> Attempting Forward Pass...'
-outputs = convnet:forward(img)
-local pred = outputs:float()
+outputs = model.convnet:forward(img)
+outputs = outputs:float()
 
-local _, pred_sorted = pred:sort(2, true)
-print(pred_sorted[1])
+local confidences, classnums = outputs:view(-1):sort(true)
 
---l = convnet:get(1):get(1):get(41)
---print(l.output:resize(l.output:size(2)))
+topNClasses = {}
+topNConfidences = {}
+
+for i=1, topN do
+   topNClasses[i] = model.classids[classnums[i]+model.labelOffset]
+   topNConfidences[i] = confidences[i]
+end
+
+print(topNClasses, topNConfidences)
+

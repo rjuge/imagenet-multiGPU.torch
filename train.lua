@@ -48,10 +48,10 @@ local function paramsForEpoch(epoch)
     end
     local regimes = {
         -- start, end,    LR,   WD,
-         {  1,      9,   1e-1,   5e-4, },
-         { 10,     19,   1e-2,   5e-4  },
-         { 20,     25,   1e-3,   0 },
-         { 26,     1e8,   1e-4,   0 },
+       {  1,      9,   1e-1,   5e-4, },
+       { 10,     19,   1e-2,   5e-4  },
+       { 20,     25,   1e-3,   0 },
+       { 26,     50,   1e-4,   0 },
        }
  
 
@@ -64,7 +64,7 @@ end
 
 -- 2. Create loggers.
 local batchNumber
-local top1_epoch, loss_epoch
+local top1_epoch, top5_epoch, loss_epoch
 
 -- 3. train - this function handles the high-level training loop,
 --            i.e. load data, train model, save model and state to disk
@@ -90,6 +90,7 @@ function train()
 
    local tm = torch.Timer()
    top1_epoch = 0
+   top5_epoch = 0
    loss_epoch = 0
    for i=1,opt.epochSize do
       -- queue jobs to data-workers
@@ -108,12 +109,14 @@ function train()
    cutorch.synchronize()
 
    top1_epoch = top1_epoch * 100 / (opt.batchSize * opt.epochSize)
+   top5_epoch = top5_epoch * 100 / (opt.batchSize * opt.epochSize)
    loss_epoch = loss_epoch / opt.epochSize
    
    print(string.format('Epoch: [%d][TRAINING SUMMARY] Total Time(s): %.2f\t'
                           .. 'average loss (per batch): %.2f \t '
-                          .. 'accuracy(%%):\t top-1 %.2f\t',
-                       epoch, tm:time().real, loss_epoch, top1_epoch))
+                          .. 'accuracy(%%):\t top-1 %.2f\t'
+			  .. 'accuracy(%%):\t top-5 %.2f\t',
+                       epoch, tm:time().real, loss_epoch, top1_epoch, top5_epoch))
    print('\n')
 
    -- save model
@@ -121,16 +124,43 @@ function train()
 
    -- clear the intermediate states in the model before saving to disk
    -- this saves lots of disk space
-   --model:clearState()
-   --saveDataParallel(paths.concat(opt.save, 'model_' .. epoch .. '.t7'), model) --
-   --defined in util.lua
-   local modelToSave = saveDataParallel(model)
-   modelToSave = deepCopy(modelToSave):float():clearState()
-   cudnn.convert(modelToSave,nn)
-   modelToSave = modelToSave:float()
-   torch.save(paths.concat(opt.save, 'model_' .. epoch .. '.t7'), modelToSave)
-   
-   modelToSave = nil
+   if opt.FT ~= 0 then
+      local baseToSave = saveDataParallel(base_model)
+      baseToSave = deepCopy(baseToSave):float():clearState()
+      cudnn.convert(baseToSave,nn)
+      baseToSave = baseToSave:float() 
+
+      local modelToSave = saveDataParallel(model)
+      modelToSave = deepCopy(modelToSave):float():clearState()
+      cudnn.convert(modelToSave,nn)
+      modelToSave = modelToSave:float()
+
+      local mergedModel = nn.Sequential()
+      for _, module in ipairs(modelToSave.modules) do
+	 if torch.type(module)  == 'nn.Sequential' then
+	    for i=1,#module do
+	       baseToSave:add(module:get(i))
+	    end
+	    mergedModel:add(baseToSave)
+	 else
+	    mergedModel:add(module)
+	 end
+      end
+      torch.save(paths.concat(opt.save, 'model_' .. epoch .. '.t7'), mergedModel)
+      
+      baseToSave = nil
+      modelToSave = nil
+      mergedModel = nil
+   else
+      local modelToSave = saveDataParallel(model)
+      modelToSave = deepCopy(modelToSave):float():clearState()
+      cudnn.convert(modelToSave,nn)
+      modelToSave = modelToSave:float()
+      torch.save(paths.concat(opt.save, 'model_' .. epoch .. '.t7'), modelToSave)
+      
+      modelToSave = nil
+   end
+
    collectgarbage()
 
    torch.save(paths.concat(opt.save, 'optimState_' .. epoch .. '.t7'), optimState)
@@ -154,26 +184,41 @@ function trainBatch(inputsCPU, labelsCPU)
    collectgarbage()	
    local dataLoadingTime = dataTimer:time().real
    timer:reset()
-
+   
    -- transfer over to GPU
    inputs:resize(inputsCPU:size()):copy(inputsCPU)
    labels:resize(labelsCPU:size()):copy(labelsCPU)
+   
    local err, outputs
-   feval = function(x)
-      model:zeroGradParameters()
-      outputs = model:forward(inputs)
-      err = criterion:forward(outputs, labels)
-      local gradOutputs = criterion:backward(outputs, labels)
-      model:backward(inputs, gradOutputs)
-      return err, gradParameters
+   if opt.FT ~= 0 then 
+      local inputsFT = torch.CudaTensor()
+      inputsFT = base_model:forward(inputs)
+      feval = function(x)
+	 model:zeroGradParameters()
+	 outputs = model:forward(inputsFT)
+	 err = criterion:forward(outputs, labels)
+	 local gradOutputs = criterion:backward(outputs, labels)
+	 model:backward(inputsFT, gradOutputs)
+	 return err, gradParameters
+      end
+   else
+      feval = function(x)
+	 model:zeroGradParameters()
+	 outputs = model:forward(inputs)
+	 err = criterion:forward(outputs, labels)
+	 local gradOutputs = criterion:backward(outputs, labels)
+	 model:backward(inputs, gradOutputs)
+	 return err, gradParameters
+      end
    end
    optim.sgd(feval, parameters, optimState)
 
    cutorch.synchronize()
    batchNumber = batchNumber + 1
    loss_epoch = loss_epoch + err
-   -- top-1 error
+   -- top-1 top-5 errors
    local top1 = 0
+   local top5 = 0
    do
       local _,prediction_sorted = outputs:float():sort(2, true) -- descending
       for i=1,opt.batchSize do
@@ -181,8 +226,13 @@ function trainBatch(inputsCPU, labelsCPU)
 	    top1_epoch = top1_epoch + 1;
 	    top1 = top1 + 1
 	 end
+	 if isTop5(prediction_sorted[i], labelsCPU[i]) == true then
+	    top5_epoch = top5_epoch + 1;
+	    top5 = top5 + 1
+	 end
       end
-      top1 = top1 * 100 / opt.batchSize;
+      top1 = top1 * 100 / opt.batchSize; 
+      top5 = top5 * 100 / opt.batchSize;
    end
    -- Calculate top-1 error, and print information
    print(('Epoch: [%d][%d/%d]\tTime %.3f Err %.4f Top1-%%: %.2f LR %.0e DataLoadingTime %.3f'):format(
@@ -191,3 +241,14 @@ function trainBatch(inputsCPU, labelsCPU)
 
    dataTimer:reset()
 end
+
+function isTop5(X_hat, X)
+   bool = false
+   for i=1,5 do
+      if X_hat[i] == X then
+	 bool=true
+      end
+   end
+   return bool
+end
+

@@ -38,11 +38,13 @@ local function cleanDPT(module)
    --cutorch.setDevice(opt.GPU)
    --newDPT:add(module:get(1), opt.GPU)
    return module:get(1)
+   --return newDPT
 end
 
 function saveDataParallel(model)
    if torch.type(model) == 'nn.DataParallelTable' then
-      torch.save(filename, cleanDPT(model))
+      local temp_model = cleanDPT(model)
+      return temp_model
    elseif torch.type(model) == 'nn.Sequential' then
       local temp_model = nn.Sequential()
       for i, module in ipairs(model.modules) do
@@ -69,7 +71,9 @@ function loadDataParallel(filename, nGPU)
       for i,module in ipairs(model.modules) do
          if torch.type(module) == 'nn.DataParallelTable' then
             model.modules[i] = makeDataParallel(module:get(1):float(), nGPU)
-         end
+         elseif torch.type(module) == 'nn.Sequential' then
+            model.modules[i] = makeDataParallel(module:float(), nGPU)
+ 	 end
       end
       return model
    else
@@ -93,3 +97,41 @@ function deepCopy(tbl)
    return copy
 end
 
+local function countModules(model)
+   if torch.type(model) == 'nn.Sequential' then
+      ft_model = nn.Sequential()
+      local containers = #model
+      local mod = 0
+      local mod_cnt = 0
+      for i=1,containers do
+	 if torch.type(model:get(i))=='nn.Sequential' and #model:get(i):listModules() ~= 1 then
+	    mod_cnt = mod_cnt + #model:get(i):listModules() - 1
+	 elseif torch.type(model:get(i))=='nn.Sequential' and #model:get(i):listModules() == 1 then
+	    mod_cnt = mod_cnt + 1
+	 else
+	    mod_cnt = mod_cnt + #model:get(i):listModules()
+	 end
+      end
+      mod = mod_cnt
+      return mod
+   else
+      error'Unsupported model type'
+   end
+end
+
+function splitModel(m, layer_nb)
+   assert(torch.type(m)=='nn.Sequential', 'Unsupported model type')
+   local model = m:clone('weight','bias')
+   local ft_model = nn.Sequential() 
+   local containers = #model
+   len = #model:get(1)
+   for i=layer_nb,len do
+      ft_model:add(model:get(1):get(layer_nb))
+      model:get(1):remove(layer_nb)
+   end
+   for i=2,containers do
+      model:remove()
+   end
+   collectgarbage()
+   return model:get(1), ft_model
+end

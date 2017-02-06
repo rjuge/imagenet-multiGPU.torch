@@ -12,7 +12,7 @@ require 'hzproc'
 local c = require 'trepl.colorize'
 local json = require 'json'
 
-tableFromJSON = json.load('hv01_labels2classes.json')
+tableFromJSON = json.load('hv02_labels2classes.json')
 
 paths.dofile('dataset_fast.lua')
 paths.dofile('util.lua')
@@ -118,14 +118,14 @@ end
 --]]
 
 -- function to load the image
-testHook = function(self, path) 
+testHook = function(self, path, pTest) 
    local input = (loadImage(path)):cuda()
 
    -- crop
    input = augmenter:Crop(input)
 
    -- do data augmentation with probability opt.PaugTest
-   if torch.uniform() < opt.PaugTest then 
+   if torch.uniform() < pTest then 
      input = augmenter:Augment(input)
    end
 
