@@ -44,7 +44,7 @@ end
 function A.RandomAffine(prob)
   return function(input)
     if torch.uniform() < prob then
-       local deg = torch.uniform(-5,5)
+       local deg = torch.uniform(-13,13)
        local xshear = torch.uniform(-0.05,0.05)
        local yshear = torch.uniform(-0.05,0.05)
        local scale = torch.uniform(1.0,1.2)

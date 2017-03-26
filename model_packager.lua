@@ -23,12 +23,13 @@ model = {}
 --checkpoint = torch.load(opt.m,'b64')
 --convnet = checkpoint.model
 convnet = torch.load(opt.m,'b64')
+convnet:remove()
 
 if(opt.cudnn == true) then
     convnet = cudnn.convert(convnet, cudnn)
 
 end
-classids = torch.load('map_horusv1.t7','b64')
+classids = torch.load('map_horusv2.t7','b64')
 --classids = checkpoint.model.classes
 --mean = checkpoint.model.transform.mean
 --std = checkpoint.model.transform.std

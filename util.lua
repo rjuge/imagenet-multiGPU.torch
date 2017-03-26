@@ -121,17 +121,19 @@ end
 
 function splitModel(m, layer_nb)
    assert(torch.type(m)=='nn.Sequential', 'Unsupported model type')
-   local model = m:clone('weight','bias')
+   local base_model = nn.Sequential()
    local ft_model = nn.Sequential() 
-   local containers = #model
-   len = #model:get(1)
+   local containers = #m
+   len = #m:get(1)
+   for i=1,layer_nb-1 do
+      base_model:add(m:get(1):get(i))
+   end
    for i=layer_nb,len do
-      ft_model:add(model:get(1):get(layer_nb))
-      model:get(1):remove(layer_nb)
+      ft_model:add(m:get(1):get(i))
    end
    for i=2,containers do
-      model:remove()
+      ft_model:add(m:get(i))
    end
    collectgarbage()
-   return model:get(1), ft_model
+   return base_model, ft_model
 end

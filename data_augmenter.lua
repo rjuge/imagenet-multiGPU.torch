@@ -37,10 +37,10 @@ function DataAugmenter:__init(opt)
   self.augmentationPipeline = Augmentations.Compose
   {
     Augmentations.RandomLightning(0.80, self.pca),
-    Augmentations.RandomHueJitter(0.6),
+    Augmentations.RandomHueJitter(0.5),
     Augmentations.RandomTinge(0.5),
     Augmentations.RandomBlurAndNoise(0.50, 0.75),
-    Augmentations.RandomHorizontalFlip(0.5),
+    Augmentations.RandomHorizontalFlip(0.6),
     Augmentations.RandomAffine(0.85),
   }
   collectgarbage()
