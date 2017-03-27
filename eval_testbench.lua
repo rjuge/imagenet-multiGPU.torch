@@ -9,7 +9,7 @@ require 'optim'
 local pl = require('pl.import_into')()
 
 local top1, top3
-local path = "/home/remi/Deep_Learning/objRecTestbench/dataset/tiny_test/"
+local path = "/home/remi/Deep_Learning/objRecTestbench/dataset/tiny_hv02_testbench/"
 
 local args = pl.lapp([[
   -m,--model    (default 'model.t7')
