@@ -73,6 +73,20 @@ end
 
 -- 2. Create Criterion
 criterion = nn.ClassNLLCriterion()
+-- Loss: NLL
+--print('defining loss function:')
+--local normHist = histClasses / histClasses:sum()
+--local classWeights = torch.Tensor(400):fill(1)
+--for i = 1, 400 do
+  -- if histClasses[i] < 1 or i == 1 then -- ignore unlabeled
+    --  classWeights[i] = 0
+   --else
+     -- classWeights[i] = 1 / (torch.log(1.2 + normHist[i]))
+   --end
+--end
+--
+--criterion = cudnn.SpatialCrossEntropyCriterion(classWeights)
+--
 
 print('=> Model')
 --print(base_model)

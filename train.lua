@@ -42,24 +42,41 @@ end
 -- Return values:
 --    diff to apply to optimState,
 --    true IFF this is the first epoch of a new regime
-local function paramsForEpoch(epoch)
-    if opt.LR ~= 0.0 then -- if manually specified
-        return { }
-    end
-    local regimes = {
+--local function paramsForEpoch(epoch)
+--    if opt.LR ~= 0.0 then -- if manually specified
+--        return { }
+--    end
+--    local regimes = {
         -- start, end,    LR,   WD,
-       {  1,      9,   1e-1,   5e-4, },
-       { 10,     19,   1e-2,   5e-4  },
-       { 20,     25,   1e-3,   0 },
-       { 26,     50,   1e-4,   0 },
-       }
+--       {  1,      9,   1e-1,   5e-4, },
+--       { 10,     19,   1e-2,   5e-4  },
+--       { 20,     25,   1e-3,   0 },
+--       { 26,     50,   1e-4,   0 },
+--       }
  
 
-    for _, row in ipairs(regimes) do
-        if epoch >= row[1] and epoch <= row[2] then
-            return { learningRate=row[3], weightDecay=row[4] }, epoch == row[1]
-        end
-    end
+    --for _, row in ipairs(regimes) do
+     --   if epoch >= row[1] and epoch <= row[2] then
+   --         return { learningRate=row[3], weightDecay=row[4] }, epoch == row[1]
+ --       end
+--    end
+--end
+local lr, wd
+local function paramsForEpoch(epoch)
+if opt.LR ~= 0.0 and epoch == 1 then -- if manually specified	
+	lr = opt.LR
+	return { }
+elseif epoch == 1 then
+	lr = 0.1
+	return { learningRate = lr, weightDecay=1e-4 }
+elseif epoch > 15 then
+	lr = lr * math.pow( 0.95, epoch - 15) 
+	wd = 0 
+	return { learningRate = lr, weightDecay=wd }, true
+else 
+	wd = 1e-4
+	return { learningRate = 0.1, weightDecay=wd }, true
+end
 end
 
 -- 2. Create loggers.
