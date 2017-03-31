@@ -78,12 +78,15 @@ for dir in paths.iterdirs(path) do
       n_class = n_class + 1
       
       local img = image.load(path..dir..'/'..file, 3)
+         print(img)
+	 io.read()
       img = imgPreProcess(img):cuda()
 
       local outputs = model.convnet:forward(img)
       local preds = outputs:float()
       local _, pred_sorted = preds:sort(2, true)
-      
+      print(pred_sorted)
+      io.read()
       local lab = tonumber(string.sub(dir,6,-1))
       if pred_sorted[1][1] == lab then 
 	 top1 = top1 + 1 
