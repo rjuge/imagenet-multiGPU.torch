@@ -17,7 +17,8 @@ function M.parse(arg)
     ------------ General options --------------------
 
     cmd:option('-cache', './horusimagenetv2/checkpoint/', 'subdirectory in which to save/log experiments')
-    cmd:option('-data', './tiny_horusimagenet_v2dataset/', 'Home of ImageNet dataset')
+    cmd:option('-classMapping', 'hv02_labels2classes.json', 'json class mapping file')
+    cmd:option('-data', './tinyhorus_v2/', 'Home of ImageNet dataset')
     cmd:option('-manualSeed',         2, 'Manually set RNG seed')
     cmd:option('-GPU',                1, 'Default preferred GPU')
     cmd:option('-nGPU',               2, 'Number of GPUs to use by default')
@@ -39,14 +40,15 @@ function M.parse(arg)
     cmd:option('-batchSize',       64,   'mini-batch size (1 = pure stochastic)')
     ---------- Optimization options ----------------------
     cmd:option('-LR',    0.0, 'learning rate; if set, overrides default LR/WD recipe')
+    cmd:option('-optimizer', 'adam', 'Optimization algorithm: sgd | adam | nesterov | adagrad | rmsprop')
     cmd:option('-momentum',        0.9,  'momentum')
     cmd:option('-weightDecay',     5e-4, 'weight decay')
     ---------- Model options ----------------------------------
-    cmd:option('-netType',     'enet', 'Options: alexnet | overfeat | alexnetowtbn | vgg | googlenet | ninbn')
+    cmd:option('-netType',     'enet', 'Options: alexnet | overfeat | alexnetowtbn | vgg | googlenet | ninbn | enet')
     cmd:option('-retrain',     'none', 'provide path to model to retrain with')
     cmd:option('-optimState',  'none', 'provide path to an optimState to reload from')
-    cmd:option('-FT',  0, 'layer number where fine tuning starts')
-    cmd:option('-wInit',       'none', 'Options kaiming | xavier ')    
+    cmd:option('-FT',  0, 	   'layer number where fine tuning starts')
+    cmd:option('-wInit',       'none', 'Weight Initialization Scheme, Options: kaiming | xavier ')    
     cmd:text()
     
     local opt = cmd:parse(arg or {})

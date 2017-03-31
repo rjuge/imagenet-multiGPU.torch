@@ -12,7 +12,7 @@ require 'hzproc'
 local c = require 'trepl.colorize'
 local json = require 'json'
 
-tableFromJSON = json.load('hv02_labels2classes.json')
+tableFromJSON = json.load(opt.classMapping)
 
 paths.dofile('dataset_fast.lua')
 paths.dofile('util.lua')

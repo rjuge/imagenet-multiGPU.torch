@@ -9,7 +9,7 @@
 require 'optim'
 require 'util'
 --[[
-   1. Setup SGD optimization state and learning rate schedule
+   1. Setup  optimization state and learning rate schedule
    2. Create loggers.
    3. train - this function handles the high-level training loop,
               i.e. load data, train model, save model and state to disk
@@ -228,7 +228,21 @@ function trainBatch(inputsCPU, labelsCPU)
 	 return err, gradParameters
       end
    end
-   optim.sgd(feval, parameters, optimState)
+
+   if(opt.optimizer == 'sgd') then
+ 	 optim.sgd(feval, parameters, optimState)
+else if(opt.optimizer == 'adam') then
+     optim.adam(feval, parameters, optimState)
+else if (opt.optimizer == 'adagrad') then
+     optim.adagrad(feval, parameters, optimState)
+else if (opt.optimizer == 'nesterov') then
+     optim.nag(feval, parameters, optimState)
+else if (opt.optimizer == 'rmsprop') then
+     optim.rmsprop(feval, parameters, optimState)
+else
+	error ("Optimizer: " .. opt.optimizer .. " not supported!")
+end
+
 
    cutorch.synchronize()
    batchNumber = batchNumber + 1
