@@ -25,6 +25,9 @@ local optimState = {
     weightDecay = opt.weightDecay
 }
 
+print("OptimState Created: ")
+print(optimState.learningRate)
+
 if opt.optimState ~= 'none' then
     assert(paths.filep(opt.optimState), 'File not found: ' .. opt.optimState)
     print('Loading optimState from file: ' .. opt.optimState)
@@ -42,42 +45,44 @@ end
 -- Return values:
 --    diff to apply to optimState,
 --    true IFF this is the first epoch of a new regime
---local function paramsForEpoch(epoch)
---    if opt.LR ~= 0.0 then -- if manually specified
---        return { }
---    end
---    local regimes = {
+local function paramsForEpoch(epoch)
+    if opt.LR ~= 0.0 then -- if manually specified
+        return { }
+    end
+    local regimes = {
         -- start, end,    LR,   WD,
---       {  1,      9,   1e-1,   5e-4, },
---       { 10,     19,   1e-2,   5e-4  },
---       { 20,     25,   1e-3,   0 },
---       { 26,     50,   1e-4,   0 },
---       }
+       {  1,     18,     1e-2,   5e-4, },
+       { 19,     29,     5e-3,   5e-4  },
+       { 30,     43,     1e-3,   0 },
+       { 44,     52,     5e-4,   0 },
+       { 53,     1e-8,   1e-4,   0 },
+       }
  
 
-    --for _, row in ipairs(regimes) do
-     --   if epoch >= row[1] and epoch <= row[2] then
-   --         return { learningRate=row[3], weightDecay=row[4] }, epoch == row[1]
- --       end
---    end
+    for _, row in ipairs(regimes) do
+        if epoch >= row[1] and epoch <= row[2] then
+            return { learningRate=row[3], weightDecay=row[4] }, epoch == row[1]
+        end
+    end
+end
+
+--local lr, wd
+--local function paramsForEpoch(epoch)
+--print("inParamsForEpoch")
+--print(epoch)
+--print(opt.LR)
+--if opt.LR ~= 0.0 and epoch == 1 then -- if manually specified	
+	--lr = opt.LR
+	--return { }
+--elseif epoch == 1 then
+	--lr = 0.1
+	--return { learningRate = lr, weightDecay=1e-4 }, true
+--elseif epoch > 15 then
+	--lr = lr * math.pow( 0.95, epoch - 15) 
+	--wd = 0 
+	--return { learningRate = lr, weightDecay=wd }, true 
 --end
-local lr, wd
-local function paramsForEpoch(epoch)
-if opt.LR ~= 0.0 and epoch == 1 then -- if manually specified	
-	lr = opt.LR
-	return { }
-elseif epoch == 1 then
-	lr = 0.1
-	return { learningRate = lr, weightDecay=1e-4 }
-elseif epoch > 15 then
-	lr = lr * math.pow( 0.95, epoch - 15) 
-	wd = 0 
-	return { learningRate = lr, weightDecay=wd }, true
-else 
-	wd = 1e-4
-	return { learningRate = 0.1, weightDecay=wd }, true
-end
-end
+--end
 
 -- 2. Create loggers.
 local batchNumber
@@ -90,7 +95,12 @@ function train()
    print("==> online epoch # " .. epoch)
 
    local params, newRegime = paramsForEpoch(epoch)
+--   print("paramsForEpoch: ")
+--   print("LR: ".. params.learningRate)
+--   io.read()   
    if newRegime then
+      --print("newRegime")
+      --io.read()
       optimState = {
          learningRate = params.learningRate,
          learningRateDecay = 0.0,
@@ -99,6 +109,7 @@ function train()
          weightDecay = params.weightDecay
       }
    end
+   --print(optimState)
    batchNumber = 0
    cutorch.synchronize()
 
@@ -211,33 +222,35 @@ function trainBatch(inputsCPU, labelsCPU)
       local inputsFT = torch.CudaTensor()
       inputsFT = base_model:forward(inputs)
       feval = function(x)
-	 model:zeroGradParameters()
-	 outputs = model:forward(inputsFT)
-	 err = criterion:forward(outputs, labels)
-	 local gradOutputs = criterion:backward(outputs, labels)
-	 model:backward(inputsFT, gradOutputs)
-	 return err, gradParameters
+	  	model:zeroGradParameters()
+	 	outputs = model:forward(inputsFT)
+	 	err = criterion:forward(outputs, labels)
+	 	local gradOutputs = criterion:backward(outputs, labels)
+	 	model:backward(inputsFT, gradOutputs)
+	 	return err, gradParameters
       end
    else
       feval = function(x)
-	 model:zeroGradParameters()
-	 outputs = model:forward(inputs)
-	 err = criterion:forward(outputs, labels)
-	 local gradOutputs = criterion:backward(outputs, labels)
-	 model:backward(inputs, gradOutputs)
-	 return err, gradParameters
+	  	model:zeroGradParameters()
+	  	outputs = model:forward(inputs)
+	 	err = criterion:forward(outputs, labels)
+	 	local gradOutputs = criterion:backward(outputs, labels)
+	 	model:backward(inputs, gradOutputs)
+	 	return err, gradParameters
       end
    end
 
    if(opt.optimizer == 'sgd') then
+--     print(optimState)
+--     io.read()
  	 optim.sgd(feval, parameters, optimState)
-else if(opt.optimizer == 'adam') then
+elseif(opt.optimizer == 'adam') then
      optim.adam(feval, parameters, optimState)
-else if (opt.optimizer == 'adagrad') then
+elseif (opt.optimizer == 'adagrad') then
      optim.adagrad(feval, parameters, optimState)
-else if (opt.optimizer == 'nesterov') then
+elseif (opt.optimizer == 'nesterov') then
      optim.nag(feval, parameters, optimState)
-else if (opt.optimizer == 'rmsprop') then
+elseif (opt.optimizer == 'rmsprop') then
      optim.rmsprop(feval, parameters, optimState)
 else
 	error ("Optimizer: " .. opt.optimizer .. " not supported!")
