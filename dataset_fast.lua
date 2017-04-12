@@ -97,12 +97,14 @@ function dataset:__init(...)
    
    -- find class names
    print('finding class names')
-   self.classes = {}
+   self.classes = tds.Hash()
    local classPaths = tds.Hash()
+   self.classes_cnt = 0
    if self.forceClasses then
       print('Adding forceClasses class names')
       for k,v in pairsByKeys(self.forceClasses) do
-         self.classes[#self.classes + 1] = k
+         self.classes[self.classes_cnt + 1] = k
+	 self.classes_cnt = self.classes_cnt + 1 
       end
    end
 
@@ -112,8 +114,8 @@ function dataset:__init(...)
       dirpath = self.paths[1] .. k .. '/'
       classPaths[k] = dirpath
    end
-   print(#self.classes .. ' class names found')
-   self.classIndices = {}
+   print(self.classes_cnt .. ' class names found')
+   self.classIndices = tds.Hash()
    for k,v in pairsByKeys(self.classes) do
       self.classIndices[v] = k
    end
@@ -122,7 +124,7 @@ function dataset:__init(...)
    print('Finding path for each image')
    self.imagePath = torch.CharTensor()  -- path to each image in dataset
    self.imageClass = torch.LongTensor() -- class index of each image (class index in self.classes)
-   self.classList = {}                   -- index of imageList to each image of a particular class
+   self.classList = tds.Hash()          -- index of imageList to each image of a particular class
    self.classListSample = self.classList -- the main list used when sampling data
    local counts = tds.Hash()
    local maxPathLength = 0
@@ -131,16 +133,18 @@ function dataset:__init(...)
    local length = 0
 
    local fullPaths = tds.Hash()
+   local fullPathsSize = 0
    -- iterate over classPaths
    for _,path in pairsByKeys(classPaths) do
     local count = 0
       -- iterate over files in the class path
       for f in paths.iterfiles(path) do
-        local fullPath = path .. f
+        local fullPath = path .. '/' .. f
         maxPathLength = math.max(fullPath:len(), maxPathLength)
         count = count + 1
         length = length + 1
-        fullPaths[#fullPaths + 1] = fullPath
+        fullPaths[fullPathsSize + 1] = fullPath
+	fullPathsSize = fullPathsSize + 1
       end
       counts[path] = count
    end
@@ -165,8 +169,8 @@ function dataset:__init(...)
    print('Updating classList and imageClass appropriately')
    self.imageClass:resize(self.numSamples)
    local runningIndex = 0
-   for i=1, #self.classes do
-	  if self.verbose then xlua.progress(i, #self.classes) end
+   for i=1, self.classes_cnt do
+	  if self.verbose then xlua.progress(i, self.classes_cnt) end
       local clsLength = counts[classPaths[self.classes[i]]]
       if clsLength == 0 then
          error('Class has zero samples: ' .. self.classes[i])
@@ -182,7 +186,7 @@ function dataset:__init(...)
       self.classListTrain = {}
       self.classListSample = self.classListTrain
       local totalTrainSamples = 0
-      for i=1,#self.classes do
+      for i=1,self.classes_cnt do
          local list = self.classList[i]
          count = self.classList[i]:size(1)
          local perm = torch.randperm(count)
@@ -199,7 +203,7 @@ function dataset:__init(...)
          self.testIndicesSize = totalTestSamples
          local tdata = self.testIndices:data()
          local tidx = 0
-         for i=1,#self.classes do
+         for i=1,self.classes_cnt do
             local list = self.classListTest[i]
             if list:dim() ~= 0 then
                local ldata = list:data()
@@ -224,7 +228,7 @@ function dataset:__init(...)
       self.classListSample = self.classListTrain
       local totalTestSamples = 0
       -- split the classList into classListTrain and classListTest
-      for i=1,#self.classes do
+      for i=1,self.classes_cnt do
          local list = self.classList[i]
          count = self.classList[i]:size(1)
          local splitidx = math.floor((count * self.split / 100) + 0.5) -- +round
@@ -250,7 +254,7 @@ function dataset:__init(...)
       self.testIndicesSize = totalTestSamples
       local tdata = self.testIndices:data()
       local tidx = 0
-      for i=1,#self.classes do
+      for i=1,self.classes_cnt do
          local list = self.classListTest[i]
          if list:dim() ~= 0 then
             local ldata = list:data()
@@ -309,9 +313,9 @@ function dataset:getByClass(class)
 end
 
 -- converts a table of samples (and corresponding labels) to a clean tensor
-local function tableToOutput(self, dataTable, scalarTable)
+local function tableToOutput(self, dataTable, scalarTable, dataTableSize, scalarTableSize)
    local data, scalarLabels
-   local quantity = #scalarTable
+   local quantity = scalarTableSize
    local samplesPerDraw
    if dataTable[1]:dim() == 3 then samplesPerDraw = 1
    else samplesPerDraw = dataTable[1]:size(1) end
@@ -322,7 +326,7 @@ local function tableToOutput(self, dataTable, scalarTable)
       data = torch.Tensor(quantity * samplesPerDraw,
                           self.sampleSize[1], self.sampleSize[2], self.sampleSize[3])
       scalarLabels = torch.LongTensor(quantity * samplesPerDraw)
-      for i=1,#dataTable do
+      for i=1,dataTableSize do
          local idx = (i-1)*samplesPerDraw
 	 data[{{idx+1,idx+samplesPerDraw}}]:copy(dataTable[i])
          scalarLabels[{{idx+1,idx+samplesPerDraw}}]:fill(scalarTable[i])
@@ -339,14 +343,18 @@ function dataset:sample(quantity)
    quantity = quantity or 1
    local dataTable = {}
    local scalarTable = {}
+   local dataTableSize = 0
+   local scalarTableSize = 0
    for _=1,quantity do
-      local classId = torch.random(1, #self.classes)
-	  local class = self.classes[classId]
+      local classId = torch.random(1, self.classes_cnt)
+      local class = self.classes[classId]
       local out = self:getByClass(class)
-      dataTable[#dataTable + 1] = out
-      scalarTable[#scalarTable + 1] = self.classIndices[class]
+      dataTable[dataTableSize + 1] = out
+      scalarTable[scalarTableSize + 1] = classId
+      dataTableSize = dataTableSize + 1
+      scalarTableSize = scalarTableSize + 1
    end
-   local data, scalarLabels = tableToOutput(self, dataTable, scalarTable) 
+   local data, scalarLabels = tableToOutput(self, dataTable, scalarTable, dataTableSize, scalarTableSize) 
    return data, scalarLabels
 end
 
@@ -370,6 +378,8 @@ function dataset:get(i1, i2, pTest)
    -- now that indices has been initialized, get the samples
    local dataTable = {}
    local scalarTable = {}
+   local dataTableSize = 0
+   local scalarTableSize = 0
    for i=1,quantity do
       -- load the sample
       local idx = self.testIndices[indices[i]]
@@ -377,8 +387,10 @@ function dataset:get(i1, i2, pTest)
       local out = self:sampleHookTest(imgpath, pTest)
       table.insert(dataTable, out)
       table.insert(scalarTable, self.imageClass[idx])
+      dataTableSize = dataTableSize + 1
+      scalarTableSize = scalarTableSize + 1
    end
-   local data, scalarLabels = tableToOutput(self, dataTable, scalarTable) 
+   local data, scalarLabels = tableToOutput(self, dataTable, scalarTable, dataTableSize, scalarTableSize) 
    collectgarbage()
    return data, scalarLabels
 end
