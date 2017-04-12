@@ -47,6 +47,7 @@ nClasses = #classes
 donkeys:addjob(function() return trainLoader:sizeTrain() end, function(c) nTrain = c end)
 donkeys:synchronize()
 assert(nClasses, "Failed to get nClasses")
+print(nClasses)
 assert(nClasses == opt.nClasses,
        "nClasses is reported different in the data loader, and in the commandline options")
 print('nClasses: ', nClasses)

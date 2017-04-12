@@ -16,26 +16,31 @@ function M.parse(arg)
     cmd:text('Options:')
     ------------ General options --------------------
 
-    cmd:option('-cache', './horusimagenetv2/checkpoint/', 'subdirectory in which to save/log experiments')
-    cmd:option('-classMapping', 'hv02_labels2classes.json', 'json class mapping file')
-    cmd:option('-data', './tinyhorus_v2/', 'Home of ImageNet dataset')
+    cmd:option('-cache', './tinyimagenet/checkpoint/', 'subdirectory in which to save/log experiments')
+    --cmd:option('-cache', './horusimagenetv2/checkpoint/', 'subdirectory in which to save/log experiments')
+    cmd:option('-classMapping', 'imagenet.json', 'json class mapping file')
+    --cmd:option('-classMapping', 'hv02_labels2classes.json', 'json class mapping file')
+    cmd:option('-data', './tinyimagenetdataset/', 'Home of ImageNet dataset')
+    --cmd:option('-data', './tinyhorus_v2/', 'Home of ImageNet dataset')
     cmd:option('-manualSeed',         2, 'Manually set RNG seed')
     cmd:option('-GPU',                1, 'Default preferred GPU')
     cmd:option('-nGPU',               2, 'Number of GPUs to use by default')
     cmd:option('-backend',     'cudnn', 'Options: cudnn | nn')
     cmd:option('-cudnnAutotune',     1, 'Enable the cudnn auto tune feature Options: 1 | 0')
     ------------- Data options ------------------------
-    cmd:option('-nDonkeys',        8, 'number of donkeys to initialize (data loading threads)')
+    cmd:option('-nDonkeys',        12, 'number of donkeys to initialize (data loading threads)')
     cmd:option('-imageSize',         256,    'Smallest side of the resized image')
     cmd:option('-cropSize',          224,    'Height and Width of image crop to be used as input layer')
-    cmd:option('-nClasses',        400, 'number of classes in the dataset')
+    cmd:option('-nClasses',        1000, 'number of classes in the dataset')
+    --cmd:option('-nClasses',        400, 'number of classes in the dataset')
     cmd:option('-PaugTrain',        0.0, 'probability of data augmentation for training')
     cmd:option('-PaugTest',        0.0, 'probability of data augmentation for testing')
     ------------- Training options --------------------
-    cmd:option('-nEpochs',         50,    ' Number of total epochs to run')
-    cmd:option('-epochSize',       7800, 'Number of batches per epoch') 	-- for batch size 64
-    --cmd:option('-epochSize',     3900, ' Number of batches per epoch')	-- for batch size 128
-    --cmd:option('-epochSize',     1900, 'Number of batches per epoch')	-- for batch size 256
+    cmd:option('-nEpochs',         100,    ' Number of total epochs to run')
+    --cmd:option('-epochSize',       9241, 'Number of batches per epoch') 	-- for batch size 64
+    --cmd:option('-epochSize',     4621, ' Number of batches per epoch')	-- for batch size 128
+	cmd:option('-epochSize',     10010, ' Number of batches per epoch')	-- for batch size 128 for imagenet
+    --cmd:option('-epochSize',     2311, 'Number of batches per epoch')	-- for batch size 256
     cmd:option('-epochNumber',     1,     'Manual epoch number (useful on restarts)')
     cmd:option('-batchSize',       128,   'mini-batch size (1 = pure stochastic)')
     ---------- Optimization options ----------------------

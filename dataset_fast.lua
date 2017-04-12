@@ -101,32 +101,28 @@ function dataset:__init(...)
    local classPaths = tds.Hash()
    if self.forceClasses then
       print('Adding forceClasses class names')
-      self.classes_cnt = 0
-      for k,v in pairs(self.forceClasses) do
-         self.classes[tonumber(string.sub(k,6,-1))] = v
-         classPaths[tonumber(string.sub(k,6,-1))] = tds.Hash()
-         self.classes_cnt = self.classes_cnt + 1
+      for k,v in pairsByKeys(self.forceClasses) do
+         self.classes[#self.classes + 1] = k
       end
    end
 
    -- modified loop over each paths folder, get list of unique class names
    print('Adding all path folders')
-   for k,_ in pairs(self.forceClasses) do
-      dirpath = opt.data .. k .. '/'
-      classPaths[tonumber(string.sub(k,6,-1))] = dirpath
+   for k,_ in pairsByKeys(self.forceClasses) do
+      dirpath = self.paths[1] .. k .. '/'
+      classPaths[k] = dirpath
    end
-   print(self.classes_cnt .. ' class names found')
+   print(#self.classes .. ' class names found')
    self.classIndices = {}
-   for k,v in pairs(self.classes) do
+   for k,v in pairsByKeys(self.classes) do
       self.classIndices[v] = k
    end
-
 
    -- find the image path names
    print('Finding path for each image')
    self.imagePath = torch.CharTensor()  -- path to each image in dataset
    self.imageClass = torch.LongTensor() -- class index of each image (class index in self.classes)
-   self.classList = {}                  -- index of imageList to each image of a particular class
+   self.classList = {}                   -- index of imageList to each image of a particular class
    self.classListSample = self.classList -- the main list used when sampling data
    local counts = tds.Hash()
    local maxPathLength = 0
@@ -146,7 +142,6 @@ function dataset:__init(...)
         length = length + 1
         fullPaths[#fullPaths + 1] = fullPath
       end
-
       counts[path] = count
    end
 
@@ -156,7 +151,7 @@ function dataset:__init(...)
    self.imagePath:resize(length, maxPathLength):fill(0)
    local s_data = self.imagePath:data()
    local count = 0
-   for _,line in pairsByKeys(fullPaths) do
+   for i,line in pairsByKeys(fullPaths) do
      ffi.copy(s_data, line)
      s_data = s_data + maxPathLength
      if self.verbose and count % 10000 == 0 then
@@ -170,9 +165,9 @@ function dataset:__init(...)
    print('Updating classList and imageClass appropriately')
    self.imageClass:resize(self.numSamples)
    local runningIndex = 0
-   for i=1,self.classes_cnt do
-      if self.verbose then xlua.progress(i, self.classes_cnt) end
-      local clsLength = counts[classPaths[i]]
+   for i=1, #self.classes do
+	  if self.verbose then xlua.progress(i, #self.classes) end
+      local clsLength = counts[classPaths[self.classes[i]]]
       if clsLength == 0 then
          error('Class has zero samples: ' .. self.classes[i])
       else
@@ -183,7 +178,42 @@ function dataset:__init(...)
    end
 
    --==========================================================================
-
+   if opt.classMapping == 'imagenet.json' then
+      self.classListTrain = {}
+      self.classListSample = self.classListTrain
+      local totalTrainSamples = 0
+      for i=1,#self.classes do
+         local list = self.classList[i]
+         count = self.classList[i]:size(1)
+         local perm = torch.randperm(count)
+         self.classListTrain[i] = torch.LongTensor(count)
+         for j=1,count do
+            self.classListTrain[i][j] = list[perm[j]]
+         end
+         totalTrainSamples = totalTrainSamples + self.classListTrain[i]:size(1)
+      end
+      if self.paths[1] == opt.data.."val/" then
+         local totalTestSamples = totalTrainSamples
+         self.classListTest = self.classListTrain
+         self.testIndices = torch.LongTensor(totalTestSamples)
+         self.testIndicesSize = totalTestSamples
+         local tdata = self.testIndices:data()
+         local tidx = 0
+         for i=1,#self.classes do
+            local list = self.classListTest[i]
+            if list:dim() ~= 0 then
+               local ldata = list:data()
+               for j=0,list:size(1)-1 do
+                  tdata[tidx] = ldata[j]
+                  tidx = tidx + 1
+               end
+            end
+         end
+      else
+         self.testIndicesSize = 0
+      end
+   else
+   -- for train and val in unique folder
    if self.split == 100 then
       self.testIndicesSize = 0
    else
@@ -194,7 +224,7 @@ function dataset:__init(...)
       self.classListSample = self.classListTrain
       local totalTestSamples = 0
       -- split the classList into classListTrain and classListTest
-      for i=1,self.classes_cnt do
+      for i=1,#self.classes do
          local list = self.classList[i]
          count = self.classList[i]:size(1)
          local splitidx = math.floor((count * self.split / 100) + 0.5) -- +round
@@ -220,7 +250,7 @@ function dataset:__init(...)
       self.testIndicesSize = totalTestSamples
       local tdata = self.testIndices:data()
       local tidx = 0
-      for i=1,self.classes_cnt do
+      for i=1,#self.classes do
          local list = self.classListTest[i]
          if list:dim() ~= 0 then
             local ldata = list:data()
@@ -231,6 +261,7 @@ function dataset:__init(...)
          end
       end
    end
+end
 end
 
 -- size(), size(class)
@@ -247,9 +278,6 @@ end
 
 -- size(), size(class)
 function dataset:sizeTrain(class)
-   if self.split == 0 then
-      return 0;
-   end
    if class then
       return self:size(class, self.classListTrain)
    else
@@ -259,9 +287,6 @@ end
 
 -- size(), size(class)
 function dataset:sizeTest(class)
-   if self.split == 100 then
-      return 0
-   end
    if class then
       return self:size(class, self.classListTest)
    else
@@ -278,8 +303,8 @@ end
 
 -- getByClass
 function dataset:getByClass(class)
-   local index = math.ceil(torch.uniform() * self.classListSample[class]:nElement())
-   local imgpath = ffi.string(torch.data(self.imagePath[self.classListSample[class][index]]))
+   local index = math.ceil(torch.uniform() * self.classListSample[self.classIndices[class]]:nElement())
+   local imgpath = ffi.string(torch.data(self.imagePath[self.classListSample[self.classIndices[class]][index]]))
    return self:sampleHookTrain(imgpath)
 end
 
@@ -315,10 +340,11 @@ function dataset:sample(quantity)
    local dataTable = {}
    local scalarTable = {}
    for _=1,quantity do
-      local class = torch.random(1, self.classes_cnt)
+      local classId = torch.random(1, #self.classes)
+	  local class = self.classes[classId]
       local out = self:getByClass(class)
       dataTable[#dataTable + 1] = out
-      scalarTable[#scalarTable + 1] = class
+      scalarTable[#scalarTable + 1] = self.classIndices[class]
    end
    local data, scalarLabels = tableToOutput(self, dataTable, scalarTable) 
    return data, scalarLabels

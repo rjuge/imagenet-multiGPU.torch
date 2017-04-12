@@ -102,14 +102,14 @@ model:add(bottleneck(256, 256))
 model:add(dbottleneck(256, 256))
 
 -- 3rd block: dilation 4
-model:add(bottleneck(256, 512, true)) -- 14x14
-model:add(bottleneck(512, 512))
-model:add(xdbottleneck(512, 512))
+model:add(bottleneck(256, 384, true)) -- 14x14
+model:add(bottleneck(384, 384))
+model:add(xdbottleneck(384, 384))
 
 -- 4th block, dilation 8
-model:add(bottleneck(512, 1024, true)) -- 7x7
-model:add(bottleneck(1024, 1024))
-model:add(xxdbottleneck(1024, 1024))
+model:add(bottleneck(384, 400, true)) -- 7x7
+model:add(bottleneck(400, 400))
+model:add(xxdbottleneck(400, 400))
 
 -- global average pooling 1x1
 model:add(cudnn.SpatialAveragePooling(7, 7, 1, 1, 0, 0))
@@ -124,7 +124,6 @@ end
 --model = nn.DataParallelTable(1, true, true):add(model, gpu_list)
 local m = nn.Sequential()
       :add(makeDataParallel(model, nGPU))
-      :add(nn.Linear(1024,1000))
       :add(nn.LogSoftMax())
 print(opt.nGPU .. " GPUs being used")
 

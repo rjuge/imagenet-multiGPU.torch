@@ -86,14 +86,25 @@ if paths.filep(trainCache) then
       --       .. trainCache .. ' and rerun the program')
 else
    print('Creating train metadata')
-   trainLoader = dataLoader{
-      paths = {opt.data},
-      loadSize = loadSize,
-      sampleSize = sampleSize,
-      split = 98,
-      forceClasses = tableFromJSON,
-      verbose = true
-   }
+   if opt.classMapping=='imagenet.json' then
+     trainLoader = dataLoader{
+        paths = {opt.data.."train/"},
+        loadSize = loadSize,
+        sampleSize = sampleSize,
+        split = 100,
+        forceClasses = tableFromJSON,
+        verbose = true
+     }
+   else 
+     trainLoader = dataLoader{
+        paths = {opt.data},
+        loadSize = loadSize,
+        sampleSize = sampleSize,
+        split = 98,
+        forceClasses = tableFromJSON,
+        verbose = true
+     }
+   end
    torch.save(trainCache, trainLoader)
    trainLoader.sampleHookTrain = trainHook
 end
@@ -147,14 +158,25 @@ if paths.filep(testCache) then
        --      .. testCache .. ' and rerun the program')
 else
    print('Creating test metadata')
-   testLoader = dataLoader{
-      paths = {opt.data},
-      loadSize = loadSize,
-      sampleSize = sampleSize,
-      split = 98,
-      verbose = true,
-      forceClasses = tableFromJSON
-   }
+   if opt.classMapping=='imagenet.json' then
+     testLoader = dataLoader{
+        paths = {opt.data.."val/"},
+        loadSize = loadSize,
+        sampleSize = sampleSize,
+        split = 100,
+        forceClasses = tableFromJSON,
+        verbose = true
+     }
+   else 
+     testLoader = dataLoader{
+        paths = {opt.data},
+        loadSize = loadSize,
+        sampleSize = sampleSize,
+        split = 98,
+        forceClasses = tableFromJSON,
+        verbose = true
+     }
+   end
    torch.save(testCache, testLoader)
    testLoader.sampleHookTest = testHook
 end
