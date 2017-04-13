@@ -306,9 +306,9 @@ function dataset:defaultSampleHook(imgpath)
 end
 
 -- getByClass
-function dataset:getByClass(class)
-   local index = math.ceil(torch.uniform() * self.classListSample[self.classIndices[class]]:nElement())
-   local imgpath = ffi.string(torch.data(self.imagePath[self.classListSample[self.classIndices[class]][index]]))
+function dataset:getByClass(classId)
+   local index = math.ceil(torch.uniform() * self.classListSample[classId]:nElement())
+   local imgpath = ffi.string(torch.data(self.imagePath[self.classListSample[classId][index]]))
    return self:sampleHookTrain(imgpath)
 end
 
@@ -347,8 +347,7 @@ function dataset:sample(quantity)
    local scalarTableSize = 0
    for _=1,quantity do
       local classId = torch.random(1, self.classes_cnt)
-      local class = self.classes[classId]
-      local out = self:getByClass(class)
+      local out = self:getByClass(classId)
       dataTable[dataTableSize + 1] = out
       scalarTable[scalarTableSize + 1] = classId
       dataTableSize = dataTableSize + 1
