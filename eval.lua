@@ -20,26 +20,25 @@ function imgPreProcess(im)
       if model.img_mean then im[i]:add(-model.img_mean[i]) end
       if model.img_std then im[i]:div(model.img_std[i]) end
    end
-   if(model.tensor_dim == 4) then
-      im:view(1, im:size(1), im:size(2), im:size(3))
-   end
-   return im
+   im_t = im:view(1, im:size(1), im:size(2), im:size(3))
+   return im_t
 end
 
 model = torch.load(args.model)
 print '==> Loading Model'
 model.convnet:add(nn.SoftMax())
 model.convnet:cuda()
+cudnn.convert(model.convnet, cudnn)
 model.convnet:evaluate()
 
 print(model.convnet)
 
 print '==> Loading and Preprocessing Input Image...'
-local img = image.load(args.probe, 3)
-img = imgPreProcess(img):cuda()
+local probe = image.load(args.probe, 3)
+img = imgPreProcess(probe)
 
 print '==> Attempting Forward Pass...'
-outputs = model.convnet:forward(img)
+outputs = model.convnet:forward(img:cuda())
 outputs = outputs:float()
 
 local confidences, classnums = outputs:view(-1):sort(true)
@@ -53,4 +52,3 @@ for i=1, topN do
 end
 
 print(topNClasses, topNConfidences)
-
