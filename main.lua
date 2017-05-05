@@ -17,6 +17,7 @@ require 'logger'
 torch.setdefaulttensortype('torch.FloatTensor')
 
 local opts = paths.dofile('opts.lua')
+local runInfo = require 'runInfo'
 
 opt = opts.parse(arg)
 
@@ -34,6 +35,9 @@ torch.manualSeed(opt.manualSeed)
 
 print('Saving everything to: ' .. opt.save)
 os.execute('mkdir -p ' .. opt.save)
+
+print('Run info file: ' .. runInfo.fileName)
+runInfo.writeToTxt(opt)
 
 paths.dofile('data.lua')
 paths.dofile('train.lua')
