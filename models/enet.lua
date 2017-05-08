@@ -55,6 +55,7 @@ local model = nn.Sequential()
 
 local _ = require 'moses'
 local bottleneck = _.bindn(_bottleneck, 4, true, false, false)
+local ibottleneck = _.bindn(_bottleneck, 1, true, false, false)
 local cbottleneck = _.bindn(_bottleneck, 4, true, false, false)
 local xbottleneck = _.bindn(_bottleneck, 4, true, 7, false)
 local wbottleneck = _.bindn(_bottleneck, 4, true, 5, false)
@@ -65,34 +66,17 @@ local xxxdbottleneck = _.bindn(_bottleneck, 4, true, false, 16)
 local xxxxdbottleneck = _.bindn(_bottleneck, 4, true, false, 32)
 
 
-
-
 local initial_block = nn.ConcatTable(2)
 initial_block:add(cudnn.SpatialConvolution(3, 13, 3, 3, 2, 2, 1, 1))
 initial_block:add(nn.SpatialMaxPooling(2, 2, 2, 2))
 
-model:add(initial_block)                                         -- 128x256
+model:add(initial_block)                                         -- 112x112
 model:add(nn.JoinTable(2)) -- can't use Concat, because SpatialConvolution needs contiguous gradOutput
 model:add(nn.SpatialBatchNormalization(16, 1e-3))
 model:add(nn.PReLU(16))
--- model:add(bottleneck(16, 64, true))                              -- 64x128
--- for i = 1,4 do
---    model:add(bottleneck(64, 64))
--- end
--- model:add(bottleneck(64, 128, true))                             -- 32x64
--- for i = 1,2 do
---    model:add(cbottleneck(128, 128))
---    model:add(dbottleneck(128, 128))
---    model:add(wbottleneck(128, 128))
---    model:add(xdbottleneck(128, 128))
---    model:add(cbottleneck(128, 128))
---    model:add(xxdbottleneck(128, 128))
---    model:add(wbottleneck(128, 128))
---    model:add(xxxdbottleneck(128, 128))
--- end
--- model:add(cudnn.SpatialConvolution(128, 1000, 1, 1)) -- Bx1000x12x12
+
 -- 1st block
-model:add(bottleneck(16, 64, true)) -- 56x56
+model:add(ibottleneck(16, 64, true)) -- 56x56
 model:add(bottleneck(64, 128))
 model:add(bottleneck(128, 128))
 
@@ -121,37 +105,16 @@ if nGPU == 1 then
 else
    for i = 1, nGPU do gpu_list[i] = i end
 end
---model = nn.DataParallelTable(1, true, true):add(model, gpu_list)
+
 local m = nn.Sequential()
       :add(makeDataParallel(model, nGPU))
-      :add(nn.Linear(1024,1000))
+      :add(nn.Linear(1024,opt.nClasses))
       :add(nn.LogSoftMax())
 print(opt.nGPU .. " GPUs being used")
 
----- Loss: NLL
---print('defining loss function:')
---local normHist = histClasses / histClasses:sum()
---local classWeights = torch.Tensor(#classes):fill(1)
---for i = 1, #classes do
---   if histClasses[i] < 1 or i == 1 then -- ignore unlabeled
---      classWeights[i] = 0
---   else
---      classWeights[i] = 1 / (torch.log(1.2 + normHist[i]))
---   end
---end
-
---loss = cudnn.SpatialCrossEntropyCriterion(classWeights)
-
---loss:cuda()
-----------------------------------------------------------------------
-   --model.imageSize = 224
-   --model.imageCrop = 224
-   --model.name = "superresnetupconv_down_prelu"
-   m.name = "ENet"
-   --model.inputChannels = 3
    m.imageSize = 256
    m.imageCrop = 224
-   print(m.name .. " created")
+
    return m:cuda()
 end
 
