@@ -33,7 +33,7 @@ function createModel(nGPU)
 local model = nn.Sequential()
 
 local initial_block = nn.ConcatTable(2)
-initial_block:add(nn.SpatialConvolution(3, 13, 3, 3, 2, 2, 1, 1))
+initial_block:add(nn.SpatialConvolution(3, 13, 3, 3, 2, 2, 1, 1):noBias())
 initial_block:add(nn.SpatialMaxPooling(2, 2, 2, 2))
 
 model:add(initial_block)                                         -- 128x256
@@ -48,7 +48,7 @@ block1:add(residual_block(32, 32, 3, 3, 1, 1, 1, 1))
 
 -- second block
 local block2 = nn.Sequential()
-block2:add(residualWithConv_block(32, 32, 3, 3, 2, 2, 1, 1))
+block2:add(residual_block(32, 32, 3, 3, 1, 1, 1, 1))
 block2:add(residual_block(32, 32, 3, 3, 1, 1, 1, 1))
 block2:add(residual_block(32, 32, 3, 3, 1, 1, 1, 1))
 block2:add(residual_block(32, 32, 3, 3, 1, 1, 1, 1))
@@ -72,7 +72,7 @@ model:add(block1):add(block2):add(block3):add(block4)
 model:add(nn.Identity())
 
 -- global average pooling 1x1
-model:add(nn.SpatialAveragePooling(7, 7, 1, 1, 0, 0))
+model:add(nn.SpatialAveragePooling(14, 14, 1, 1, 0, 0))
 model:add(nn.View(-1):setNumInputDims(3))
 
 local m = nn.Sequential()
