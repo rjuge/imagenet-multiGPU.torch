@@ -24,7 +24,7 @@ function M.parse(arg)
     cmd:option('-data', './tinyhorus_v2/', 'Home of ImageNet dataset')
     cmd:option('-manualSeed',         2, 'Manually set RNG seed')
     cmd:option('-GPU',                1, 'Default preferred GPU')
-    cmd:option('-nGPU',               4, 'Number of GPUs to use by default')
+    cmd:option('-nGPU',               2, 'Number of GPUs to use by default')
     cmd:option('-backend',     'cudnn', 'Options: cudnn | nn')
     cmd:option('-cudnnAutotune',     1, 'Enable the cudnn auto tune feature Options: 1 | 0')
     ------------- Data options ------------------------
@@ -37,21 +37,21 @@ function M.parse(arg)
     cmd:option('-PaugTest',        0.0, 'probability of data augmentation for testing')
     ------------- Training options --------------------
     cmd:option('-nEpochs',         100,    ' Number of total epochs to run')
-    --cmd:option('-epochSize',       9241, 'Number of batches per epoch') 	-- for batch size 64
-    cmd:option('-epochSize',     4621, ' Number of batches per epoch')	-- for batch size 128
+    cmd:option('-epochSize',       9241, 'Number of batches per epoch') 	-- for batch size 64
+    --cmd:option('-epochSize',     4621, ' Number of batches per epoch')	-- for batch size 128
     --cmd:option('-epochSize',     2311, 'Number of batches per epoch')	-- for batch size 256
     --cmd:option('-epochSize',     10010, ' Number of batches per epoch')	-- for batch size 128 for imagenet
     --cmd:option('-epochSize',     20020, 'Number of batches per epoch')	-- for batch size 64 for imagenet
     cmd:option('-epochNumber',     1,     'Manual epoch number (useful on restarts)')
-    cmd:option('-batchSize',       128,   'mini-batch size (1 = pure stochastic)')
+    cmd:option('-batchSize',       64,   'mini-batch size (1 = pure stochastic)')
     ---------- Optimization options ----------------------
-    cmd:option('-regime',    'conservative', 'Optimization regime: conservative | linear')
-    cmd:option('-LR',    0.0, 'learning rate; if set, overrides default LR/WD recipe')
+    cmd:option('-regime',    'linear', 'Optimization regime: conservative | linear')
+    cmd:option('-LR',    0.1, 'learning rate; if set, overrides default LR/WD recipe')
     cmd:option('-optimizer', 'adam', 'Optimization algorithm: sgd | adam | nesterov | adagrad | rmsprop')
     cmd:option('-momentum',        0.9,  'momentum')
-    cmd:option('-weightDecay',     5e-4, 'weight decay')
+    cmd:option('-weightDecay',     1e-4, 'weight decay')
     ---------- Model options ----------------------------------
-    cmd:option('-netType',     'aipolynet', 'Options: alexnet | overfeat | alexnetowtbn | vgg | googlenet | ninbn | enet')
+    cmd:option('-netType',     'enet_noDilation', 'Options: alexnet | overfeat | alexnetowtbn | vgg | googlenet | ninbn | enet')
     cmd:option('-retrain',     'none', 'provide path to model to retrain with')
     cmd:option('-optimState',  'none', 'provide path to an optimState to reload from')
     cmd:option('-FT',  0, 	   'layer number where fine tuning starts')

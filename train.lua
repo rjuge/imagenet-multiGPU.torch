@@ -75,10 +75,10 @@ if opt.LR ~= 0.0 and epoch == 1 then -- if manually specified
 	lr = opt.LR
 	return { }
 elseif epoch == 1 then
-	lr = 0.01
+	lr = 0.1
 	return { learningRate = lr, weightDecay=1e-4 }, true
-elseif epoch > 15 then
-	lr = lr * math.pow( 0.95, epoch - 15) 
+elseif epoch > 13 then
+	lr = lr * math.pow( 0.95, epoch - 13) 
 	wd = 0 
 	return { learningRate = lr, weightDecay=wd }, true
 end
