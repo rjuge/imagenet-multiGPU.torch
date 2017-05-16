@@ -5,6 +5,7 @@ tinyimagenetdataset/
 augmenterTestOut/
 horusimagenetv1/
 horusimagenetv2/
+*.png
 *.jpg
 *.t7
 *.sh
@@ -21,3 +22,4 @@ tinyimagenetdataset
 tinyhorus_v2
 *.ods
 *.png
+*.swp

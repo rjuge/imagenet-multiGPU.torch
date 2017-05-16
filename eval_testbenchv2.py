@@ -25,7 +25,15 @@ if(args.testbench == 'horus'):
 elif(args.testbench == 'raw'):
     path = "/home/remi/Deep_Learning/objRecTestbench/dataset/tiny_hv02_testbench/"
 
-file = open('./testbench_results/py_testbench_'+args.model[:-3]+'.txt', 'w')
+folder = './testbench_results/'+args.model[:-3]+'/'
+
+if not(os.path.exists(folder)):
+    os.mkdir(folder)
+
+with open('hv02_labels2classes.json') as json_data:
+    mapping = json.load(json_data)
+
+file = open(folder+'testbench.txt', 'w')
 
 file.write('Testbench results for model :'+args.model+'\n')
 file.write('\n')
@@ -135,6 +143,44 @@ top5 = top5 * 100 / nTest
 #confusion matrix
 cm = confusion_matrix(truth, predictions, labels=classes)
 
+width, height = cm.shape
+
+for x in xrange(width):
+    for y in xrange(height):
+        ax.annotate(str(cm[x][y]), xy=(y, x), 
+                    horizontalalignment='center',
+                    verticalalignment='center', fontsize=5)
+
+names = [mapping['hv02_'+(str(i).zfill(3))] for i in classes]
+plt.xticks(range(width), names, rotation=90, fontsize=6)
+plt.yticks(range(height), names, rotation=0, fontsize=6)
+plt.savefig(folder+'confusion_matrix.png', format='png')
+
+#Misclassified histogram
+np.fill_diagonal(cm, 0)
+val = cm[np.nonzero(cm)]
+fig = plt.figure()
+plt.hist(val, 50, edgecolor='black')
+plt.title('Median misclassified')
+plt.xlabel('Number of misclassified images')
+plt.ylabel('Count')
+plt.grid(True)
+uni = np.unique(val)
+med = np.median(uni)
+plt.axvline(med, color='r', linestyle='dashed', linewidth=2)
+plt.savefig(folder+'median.png', format='png')
+f = open(folder+'misclassified.txt', 'w')
+f.write('Misclassified pairs for model :'+args.model+'\n')
+f.write('\n')
+f.write('Nb   Ground truth   Prediction'+'\n')
+f.write('------------------------------'+'\n')
+for i in range(int(np.floor(med)), int(np.amax(uni))+1):
+    idx = np.where(cm==i)
+    for x,y in zip(idx[0], idx[1]):
+        f.write(str(i)+'  '+names[x]+'  '+names[y]+'\n')
+f.close()
+
+#Write Top and score per class
 file.write('Global Top1: '+str(top1)+'\n')
 file.write('Global Top3: '+str(top3)+'\n')
 file.write('Global Top5: '+str(top5)+'\n')
@@ -150,8 +196,9 @@ file.write('------------------------'+'\n')
 
 top1_id = sorted(range(len(top1_classes)), key=lambda k: top1_classes[k], reverse=True)
 for i in top1_id:
-    file.write('hv02_'+(str(i+1).zfill(3))+' '+str(top1_classes[i])+' '
+    file.write(mapping['hv02_'+(str(i+1).zfill(3))]+' '+str(top1_classes[i])+' '
                +str(top3_classes[i])+' '+str(top5_classes[i])+' '+'\n')
+file.close()
 
 #top1 chart
 bar_sorted = sorted(top1_classes)
@@ -165,7 +212,7 @@ ax.set_yticklabels(bar_id)
 ax.set_xlabel('Top1')
 ax.set_title('Top1 chart')
 ax.set_ylim(bottom=0, top=401)
-plt.savefig('./testbench_results/top1_chart_'+args.model[:-3]+'.png', format='png')
+plt.savefig(folder+'top1_chart.png', format='png')
 
 #histograms
 fig = plt.figure()
@@ -176,7 +223,7 @@ plt.title('Correct/Incorrect labels')
 plt.xlabel('Confidences')
 plt.ylabel('Count')
 plt.grid(True)
-plt.savefig('./testbench_results/hist_'+args.model[:-3]+'.png', format='png')
+plt.savefig(folder+'hist.png', format='png')
 
 
 print('==> Test ran on '+str(nTest)+' samples')
@@ -184,5 +231,3 @@ print('==> Test ran on '+str(nTest)+' samples')
 print 'Top1',top1
 print 'Top3',top3
 print 'Top5',top5
-
-file.close()

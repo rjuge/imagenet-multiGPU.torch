@@ -12,6 +12,7 @@ from sklearn.metrics import confusion_matrix
 import matplotlib.pyplot as plt
 from pylab import *
 import json
+import operator
 
 np.set_printoptions(precision=2)
 
@@ -27,10 +28,7 @@ parser.add_argument('-t', '--testbench', help = 'raw or horus', required = True)
 parser.add_argument('-jc2l', '--hv02_c2l', 
                     help = 'horus json mapping file to test on subset of classes', 
                     required = False)
-parser.add_argument('-jl2c', '--hv02_l2c', 
-                    help = 'horus json mapping file hv02_ to names', 
-                    required = False)
-parser.add_argument('-jext', '--js_ext', 
+parser.add_argument('-jh2a', '--js_h2a', 
                     help = 'json external mapping file', 
                     required = False)
 parser.add_argument('-l', '--list', help = 'text file, list subset of classes to test on', 
@@ -45,8 +43,14 @@ if(args.testbench == 'horus'):
 elif(args.testbench == 'raw'):
     path = "/home/remi/Deep_Learning/objRecTestbench/dataset/tiny_testbench_raw/"
 
+folder = './testbench_results/'+args.model[:-3]+'/'
+
+if not(os.path.exists(folder)):
+    os.mkdir(folder)
 if(args.hv02_c2l and args.list):
     jc2l = json.load(open(args.hv02_c2l,'r'))
+    jc2l['other'] = 'hv02_000'
+    jl2c = {v: k for k,v in jc2l.iteritems()} 
     f = open(args.list, 'r')
     listNames = f.readlines()
     listDirs = [jc2l[i[:-1]] for i in listNames]
@@ -59,14 +63,14 @@ else:
     listDirs = [d for d in os.listdir(path) if not os.path.isfile(os.path.join(path, d))]
     listForTest = [os.path.join(path,d) for d in listDirs]
 
-if(args.hv02_l2c and args.js_ext and args.map):
-    jl2c = json.load(open(args.hv02_l2c,'r'))
-    jext = json.load(open(args.js_ext,'r'))
+if(args.js_h2a and args.map):
+    jh2a = json.load(open(args.js_h2a,'r'))
+    ja2h = {v: k for k,v in jh2a.iteritems()} 
     map_lua = torch.load(args.map)
-elif(args.hv02_l2c and not (args.js_ext or args.map)):
-    raise ValueError('External json and mapping file are needed')
-elif(args.js_ext and not (args.hv02_l2c or args.map)):
-    raise ValueError('Horus labels to classes and mapping file are needed')
+elif(args.js_h2a and not args.map):
+    raise ValueError('External mapping file is needed')
+elif(not args.js_h2a and args.map):
+    raise ValueError('Mapping file between models classes is needed')
 
 TOP1 = 0.0
 TOP3 = 0.0
@@ -75,43 +79,9 @@ TOP5 = 0.0
 N_CLASSES = len(listForTest)
 print 'Number of classes to test on : ', N_CLASSES
 
-file = open('./testbench_results/py_testbench_'+args.model[:-3]+'.txt', 'w')
-
+file = open(folder+'testbench.txt', 'w')
 file.write('Testbench results for model :'+args.model+'\n')
 file.write('\n')
-
-def plot_confusion_matrix(cm, classes,
-                          normalize=False,
-                          title='Confusion matrix',
-                          cmap=plt.cm.Blues):
-    """
-    This function prints and plots the confusion matrix.
-    Normalization can be applied by setting `normalize=True`.
-    """
-    plt.imshow(cm, interpolation='nearest', cmap=cmap)
-    plt.title(title)
-    plt.colorbar()
-    tick_marks = np.arange(len(classes))
-    plt.xticks(tick_marks, classes, rotation=45)
-    plt.yticks(tick_marks, classes)
-
-    if normalize:
-        cm = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
-        print("Normalized confusion matrix")
-    else:
-        print('Confusion matrix, without normalization')
-
-    print(cm)
-
-    thresh = cm.max() / 2.
-    for i, j in itertools.product(range(cm.shape[0]), range(cm.shape[1])):
-        plt.text(j, i, cm[i, j],
-                 horizontalalignment="center",
-                 color="white" if cm[i, j] > thresh else "black")
-
-    plt.tight_layout()
-    plt.ylabel('True label')
-    plt.xlabel('Predicted label')
 
 def imgPreProcess(im):
     im = transform.resize(im, (3,224,224), preserve_range=True)
@@ -120,6 +90,7 @@ def imgPreProcess(im):
             im[i] -= model.img_mean[i]
         if(model.img_std):
             im[i] /= model.img_std[i]
+    im = np.expand_dims(im, axis=0)
     return im
 
 def isTop3(X_hat, X):
@@ -144,14 +115,18 @@ model.convnet = model.convnet._cuda()
 
 print model.convnet
 
-TOP1_CLASSES = np.ndarray(shape=(400,))
-TOP3_CLASSES = np.ndarray(shape=(400,))
-TOP5_CLASSES = np.ndarray(shape=(400,))
+TOP1_CLASSES = {}
+TOP3_CLASSES = {}
+TOP5_CLASSES = {}
 nTest = 0
 
 predictions = []
 truth = []
 classes = []
+
+correct=[]
+incorrect=[]
+
 for subdir, _, files in os.walk(path):
     if(subdir == path or subdir not in listForTest):
         continue
@@ -161,11 +136,13 @@ for subdir, _, files in os.walk(path):
     TOP5_CLASS = 0.0
     n_class = 0
     classes.append(int(subdir[-3:]))
+
     for f in files:
         nTest += 1
         n_class += 1
         
         img = image.load(os.path.join(subdir, f),3)
+        #print 'file : ', os.path.join(subdir, f)
         img = img.asNumpyArray()
         img_proc = imgPreProcess(img)
         im_t = torch.fromNumpyArray(img_proc)
@@ -177,27 +154,41 @@ for subdir, _, files in os.walk(path):
         
         pred_sorted = sorted(range(len(pred)), key=lambda k: pred[k], reverse=True)
         pred_sorted = [i+1 for i in pred_sorted] #python offset
-        predictions.append(pred_sorted[0])
-        if(args.js_ext):
+        if(args.js_h2a):
             label = subdir[-3:]
             truth.append(int(label))
-            l = jext[jl2c['hv02_'+str(label)]]
-            pred_sorted = [map_lua[i] for i in pred_sorted]
-            if(pred_sorted[0] == l):
+            l = jh2a[jl2c['hv02_'+str(label)]]
+            pred_lua = [map_lua[i-1] for i in pred_sorted]
+            a = pred_lua[0]
+            try:
+                h = ja2h[a]
+            except:
+                predictions.append(0)
+            else:
+                hl = jc2l[h][-3:]
+                predictions.append(int(hl))
+            if(pred_lua[0] == l):
                 TOP1 += 1 
                 TOP1_CLASS += 1
-            if(isTop3(pred_sorted, l) == True): 
+                correct.append(pred[pred_sorted[0]-1])
+	    else:
+            	incorrect.append(pred[pred_sorted[0]-1])
+            if(isTop3(pred_lua, l) == True): 
                 TOP3 += 1
                 TOP3_CLASS += 1
-            if(isTop5(pred_sorted, l) == True): 
+            if(isTop5(pred_lua, l) == True): 
                 TOP5 += 1
                 TOP5_CLASS += 1
         else:
+            predictions.append(pred_sorted[0])
             label = int(subdir[-3:])
             truth.append(label)
             if(pred_sorted[0] == label):
                 TOP1 += 1 
                 TOP1_CLASS += 1
+                correct.append(pred[pred_sorted[0]-1])
+            else:
+                incorrect.append(pred[pred_sorted[0]-1])
             if(isTop3(pred_sorted, label) == True): 
                 TOP3 += 1
                 TOP3_CLASS += 1
@@ -206,53 +197,108 @@ for subdir, _, files in os.walk(path):
                 TOP5_CLASS += 1
 
     TOP1_CLASS *= 100 / n_class
-    TOP1_CLASSES[int(label)-1] = TOP1_CLASS
+    TOP1_CLASSES[int(label)] = TOP1_CLASS
     TOP3_CLASS *= 100 / n_class
-    TOP3_CLASSES[int(label)-1] = TOP3_CLASS
+    TOP3_CLASSES[int(label)] = TOP3_CLASS
     TOP5_CLASS *= 100 / n_class
-    TOP5_CLASSES[int(label)-1] = TOP5_CLASS
+    TOP5_CLASSES[int(label)] = TOP5_CLASS
 
 
 TOP1 = TOP1 * 100 / nTest
 TOP3 = TOP3 * 100 / nTest
 TOP5 = TOP5 * 100 / nTest
 
+#confusion matrix
+classes.append(0)
+cm = confusion_matrix(truth, predictions, labels=classes)
+f, ax = plt.subplots(figsize=(48, 48))
+ax.set_title('Confusion Matrix', fontsize=45)
+res = ax.imshow(np.array(cm), cmap=plt.cm.jet, interpolation='nearest')
+width, height = cm.shape
+for x in xrange(width):
+    for y in xrange(height):
+        ax.annotate(str(cm[x][y]), xy=(y, x), 
+                    horizontalalignment='center',
+                    verticalalignment='center', fontsize=12)
+
+names = [jl2c['hv02_'+(str(i).zfill(3))] for i in classes]
+plt.xticks(range(width), names, rotation=90, fontsize=12)
+plt.yticks(range(height), names, rotation=0, fontsize=12)
+plt.savefig(folder+'confusion_matrix.png', format='png')
+
+#Misclassified histogram
+np.fill_diagonal(cm, 0)
+val = cm[np.nonzero(cm)]
+fig = plt.figure()
+plt.hist(val, 50, edgecolor='black')
+plt.title('Median misclassified')
+plt.xlabel('Number of misclassified images')
+plt.ylabel('Count')
+plt.grid(True)
+uni = np.unique(val)
+med = np.median(uni)
+plt.axvline(med, color='r', linestyle='dashed', linewidth=2)
+plt.savefig(folder+'median.png', format='png')
+f = open(folder+'misclassified.txt', 'w')
+f.write('Misclassified pairs for model :'+args.model+'\n')
+f.write('\n')
+f.write('Nb   Ground truth   Prediction'+'\n')
+f.write('------------------------------'+'\n')
+for i in range(int(np.floor(med)), int(np.amax(uni))+1):
+    idx = np.where(cm==i)
+    for x,y in zip(idx[0], idx[1]):
+        f.write(str(i)+'  '+names[x]+'  '+names[y]+'\n')
+f.close()
+
+#Write Top and score per class
 file.write('Global Top1: '+str(TOP1)+'\n')
 file.write('Global Top3: '+str(TOP3)+'\n')
 file.write('Global Top5: '+str(TOP5)+'\n')
 file.write('\n')
+#file.write('TP:',tp,'\n')
+#file.write('TN:',tn,'\n')
+#file.write('FP:',fp,'\n')
+#file.write('FN:',fn,'\n')
+#file.write('\n')
 file.write('Scores per class:'+'\n')
-file.write('hv02_ Top1 Top3 Top5'+'\n')
-file.write('---------------------'+'\n')
-for i in sorted(range(len(TOP1_CLASSES)), key=lambda k: TOP1_CLASSES[k], reverse=True):
-    file.write(str(i+1)+' '+str(TOP1_CLASSES[i])+' '
-               +str(TOP3_CLASSES[i])+' '+str(TOP5_CLASSES[i])+' '+'\n')
+file.write(' Class  Top1  Top3  Top5'+'\n')
+file.write('------------------------'+'\n')
 
-cm = confusion_matrix(truth, predictions, labels=classes)
+TOP1_id = sorted(TOP1_CLASSES.items(), key=operator.itemgetter(1), reverse=True)
+for k,v in TOP1_id:
+    file.write(jl2c['hv02_'+(str(k).zfill(3))]+' '+str(v)+' '
+               +str(TOP3_CLASSES[k])+' '+str(TOP5_CLASSES[k])+' '+'\n')
+file.close()
 
-f = plt.figure(figsize=(40,40))
-plot_confusion_matrix(cm, classes, normalize=False,
-                      title='Confusion matrix')
-
-plt.savefig('CM.png', format='png')
-
-TOP1_sorted = sorted(TOP1_CLASSES, reverse=True)
-TOP1_id = sorted(range(len(TOP1_CLASSES)), key=lambda k: TOP1_CLASSES[k], reverse=True)
-pos = np.arange(400)+.5
-f, ax = plt.subplots()
-ax.barh(pos, TOP1_sorted, align='center')
+#TOP1 chart
+bar_sorted = sorted(TOP1_CLASSES)
+bar_id = sorted(TOP1_CLASSES.items(), key=operator.itemgetter(1))
+bar_id = ['hv02_'+(str(k).zfill(3)) for k,_ in bar_id]
+bar_names = [jl2c[l] for l in bar_id]
+pos = np.arange(len(bar_id))
+f, ax  = plt.subplots(figsize=(48, 48))
+ax.barh(pos, bar_sorted, height=0.8, align='center')
 ax.set_yticks(pos)
-ax.set_yticklabels(TOP1_id)
-ax.invert_yaxis()
+ax.set_yticklabels(bar_names, fontsize=15)
 ax.set_xlabel('Top1')
-ax.set_title('Top1 chart')
-ax.set_ylim(bottom=0, top=500)
-#grid(True)
-plt.savefig('hist.png', format='png')
+ax.set_title('Top1 chart', fontsize=45)
+ax.set_ylim(bottom=0, top=len(bar_id)+1)
+plt.savefig(folder+'TOP1_chart.png', format='png')
+
+#histograms
+fig = plt.figure()
+plt.hist(np.asarray(correct), 50, facecolor=(0, 0, 1, 0.5))
+plt.hist(np.asarray(incorrect), 50, facecolor=(1, 0, 0, 0.5))
+plt.axis([0.0, 1.0, 0, 250])
+plt.title('Correct/Incorrect labels')
+plt.xlabel('Confidences')
+plt.ylabel('Count')
+plt.grid(True)
+plt.savefig(folder+'hist.png', format='png')
+
+
 print('==> Test ran on '+str(nTest)+' samples')
 
-print 'Top1 ',TOP1
-print('Top3 '+str(TOP3))
-print('Top5 '+str(TOP5))
-
-file.close()
+print 'Top1',TOP1
+print 'Top3',TOP3
+print 'Top5',TOP5
