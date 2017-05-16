@@ -45,9 +45,9 @@ function M.parse(arg)
     cmd:option('-epochNumber',     1,     'Manual epoch number (useful on restarts)')
     cmd:option('-batchSize',       64,   'mini-batch size (1 = pure stochastic)')
     ---------- Optimization options ----------------------
-    cmd:option('-regime',    'linear', 'Optimization regime: conservative | linear')
-    cmd:option('-LR',    0.1, 'learning rate; if set, overrides default LR/WD recipe')
-    cmd:option('-optimizer', 'adam', 'Optimization algorithm: sgd | adam | nesterov | adagrad | rmsprop')
+    cmd:option('-regime',    'conservative', 'Optimization regime: conservative | linear')
+    cmd:option('-LR',    0.0, 'learning rate; if set, overrides default LR/WD recipe')
+    cmd:option('-optimizer', 'sgd', 'Optimization algorithm: sgd | adam | nesterov | adagrad | rmsprop')
     cmd:option('-momentum',        0.9,  'momentum')
     cmd:option('-weightDecay',     1e-4, 'weight decay')
     ---------- Model options ----------------------------------

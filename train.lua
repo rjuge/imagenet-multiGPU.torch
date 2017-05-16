@@ -96,17 +96,7 @@ function train()
 
    if opt.regime == 'conservative' then
       local params, newRegime = paramsConservative(epoch)
-   elseif opt.regime == 'linear' then
-      local params, newRegime = paramsLinear(epoch)
-   else
-      assert(false, 'Regime not supported!')
-   end
---   print("paramsForEpoch: ")
---   print("LR: ".. params.learningRate)
---   io.read()   
-   if newRegime then
-      --print("newRegime")
-      --io.read()
+      if newRegime then
       optimState = {
          learningRate = params.learningRate,
          learningRateDecay = 0.0,
@@ -114,7 +104,24 @@ function train()
          dampening = 0.0,
          weightDecay = params.weightDecay
       }
+      end
+   elseif opt.regime == 'linear' then
+      local params, newRegime = paramsLinear(epoch)
+      if newRegime then
+      optimState = {
+         learningRate = params.learningRate,
+         learningRateDecay = 0.0,
+         momentum = opt.momentum,
+         dampening = 0.0,
+         weightDecay = params.weightDecay
+      }
+      end
+   else
+      assert(false, 'Regime not supported!')
    end
+   --print("paramsForEpoch: ")
+   --print("LR: ".. optimState.learningRate)
+   --io.read()   
    --print(optimState)
    batchNumber = 0
    cutorch.synchronize()
