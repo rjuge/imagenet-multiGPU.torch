@@ -43,25 +43,16 @@ if(args.testbench == 'horus'):
 elif(args.testbench == 'raw'):
     path = "/home/remi/Deep_Learning/objRecTestbench/dataset/tiny_testbench_raw/"
 
-folder = './testbench_results/'+args.model[:-3]+'/'
-
-if not(os.path.exists(folder)):
-    os.mkdir(folder)
-if(args.hv02_c2l and args.list):
-    jc2l = json.load(open(args.hv02_c2l,'r'))
-    jc2l['other'] = 'hv02_000'
-    jl2c = {v: k for k,v in jc2l.iteritems()} 
+if(args.list):
     f = open(args.list, 'r')
     listNames = f.readlines()
     listDirs = [jc2l[i[:-1]] for i in listNames]
     listForTest = [os.path.join(path,d) for d in listDirs]
-elif(args.hv02_c2l and not args.list):
-    raise ValueError('List of classes is needed')
-elif(args.list and not args.hv02_c2l):
-    raise ValueError('Json mapping file is needed')
+    FONT = 12
 else:
     listDirs = [d for d in os.listdir(path) if not os.path.isfile(os.path.join(path, d))]
     listForTest = [os.path.join(path,d) for d in listDirs]
+    FONT = 8
 
 if(args.js_h2a and args.map):
     jh2a = json.load(open(args.js_h2a,'r'))
@@ -71,6 +62,15 @@ elif(args.js_h2a and not args.map):
     raise ValueError('External mapping file is needed')
 elif(not args.js_h2a and args.map):
     raise ValueError('Mapping file between models classes is needed')
+
+folder = './testbench_results/'+args.model[:-3]+'/'+str(len(listForTest))+'classes/'
+
+if not(os.path.exists(folder)):
+    os.mkdir(folder)
+
+jc2l = json.load(open(args.hv02_c2l,'r'))
+jc2l['other'] = 'hv02_000'
+jl2c = {v: k for k,v in jc2l.iteritems()}    
 
 TOP1 = 0.0
 TOP3 = 0.0
@@ -219,11 +219,11 @@ for x in xrange(width):
     for y in xrange(height):
         ax.annotate(str(cm[x][y]), xy=(y, x), 
                     horizontalalignment='center',
-                    verticalalignment='center', fontsize=12)
+                    verticalalignment='center', fontsize=FONT)
 
 names = [jl2c['hv02_'+(str(i).zfill(3))] for i in classes]
-plt.xticks(range(width), names, rotation=90, fontsize=12)
-plt.yticks(range(height), names, rotation=0, fontsize=12)
+plt.xticks(range(width), names, rotation=90, fontsize=FONT)
+plt.yticks(range(height), names, rotation=0, fontsize=FONT)
 plt.savefig(folder+'confusion_matrix.png', format='png')
 
 #Misclassified histogram
@@ -279,7 +279,7 @@ pos = np.arange(len(bar_id))
 f, ax  = plt.subplots(figsize=(48, 48))
 ax.barh(pos, bar_sorted, height=0.8, align='center')
 ax.set_yticks(pos)
-ax.set_yticklabels(bar_names, fontsize=15)
+ax.set_yticklabels(bar_names, fontsize=FONT)
 ax.set_xlabel('Top1')
 ax.set_title('Top1 chart', fontsize=45)
 ax.set_ylim(bottom=0, top=len(bar_id)+1)
