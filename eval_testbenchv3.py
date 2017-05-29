@@ -43,6 +43,10 @@ if(args.testbench == 'horus'):
 elif(args.testbench == 'raw'):
     path = "/home/remi/Deep_Learning/objRecTestbench/dataset/tiny_testbench_raw/"
 
+jc2l = json.load(open(args.hv02_c2l,'r'))
+jc2l['other'] = 'hv02_000'
+jl2c = {v: k for k,v in jc2l.iteritems()}    
+
 if(args.list):
     f = open(args.list, 'r')
     listNames = f.readlines()
@@ -67,10 +71,6 @@ folder = './testbench_results/'+args.model[:-3]+'/'+str(len(listForTest))+'class
 
 if not(os.path.exists(folder)):
     os.mkdir(folder)
-
-jc2l = json.load(open(args.hv02_c2l,'r'))
-jc2l['other'] = 'hv02_000'
-jl2c = {v: k for k,v in jc2l.iteritems()}    
 
 TOP1 = 0.0
 TOP3 = 0.0
