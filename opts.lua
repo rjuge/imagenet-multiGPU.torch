@@ -37,9 +37,9 @@ function M.parse(arg)
     cmd:option('-PaugTest',        0.0, 'probability of data augmentation for testing')
     ------------- Training options --------------------
     cmd:option('-nEpochs',         100,    ' Number of total epochs to run')
-    cmd:option('-epochSize',       9241, 'Number of batches per epoch') 	-- for batch size 64
-    --cmd:option('-epochSize',     4621, ' Number of batches per epoch')	-- for batch size 128
-    --cmd:option('-epochSize',     2311, 'Number of batches per epoch')	-- for batch size 256
+    cmd:option('-epochSize',       9031, 'Number of batches per epoch') 	-- for batch size 64
+    --cmd:option('-epochSize',     4516, ' Number of batches per epoch')	-- for batch size 128
+    --cmd:option('-epochSize',     2258, 'Number of batches per epoch')	-- for batch size 256
     --cmd:option('-epochSize',     10010, ' Number of batches per epoch')	-- for batch size 128 for imagenet
     --cmd:option('-epochSize',     20020, 'Number of batches per epoch')	-- for batch size 64 for imagenet
     cmd:option('-epochNumber',     1,     'Manual epoch number (useful on restarts)')
@@ -47,7 +47,7 @@ function M.parse(arg)
     ---------- Optimization options ----------------------
     cmd:option('-regime',    'conservative', 'Optimization regime: conservative | linear')
     cmd:option('-LR',    0.0, 'learning rate; if set, overrides default LR/WD recipe')
-    cmd:option('-optimizer', 'sgd', 'Optimization algorithm: sgd | adam | nesterov | adagrad | rmsprop')
+    cmd:option('-optimizer', 'adam', 'Optimization algorithm: sgd | adam | nesterov | adagrad | rmsprop')
     cmd:option('-momentum',        0.9,  'momentum')
     cmd:option('-weightDecay',     1e-4, 'weight decay')
     ---------- Model options ----------------------------------

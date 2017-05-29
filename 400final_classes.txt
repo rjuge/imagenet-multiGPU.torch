@@ -61,7 +61,7 @@ Snowboard
 Violin
 Flower
 Pullover
-Bottle
+Soda bottle
 Ananas
 Parachute
 Glasses
@@ -156,7 +156,7 @@ Spoon
 Stapler
 Tomato
 Boots
-Armchair
+Water bottle
 popcorn
 Baseball Glove
 Stove
@@ -255,7 +255,7 @@ Dining Table
 Ice
 Vacuum Cleaner
 Koala
-Boat
+Electric shaver
 mat
 Monitor
 Pizza
