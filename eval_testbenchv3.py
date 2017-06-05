@@ -70,7 +70,7 @@ elif(not args.js_h2a and args.map):
 folder = './testbench_results/'+args.model[:-3]+'/'+str(len(listForTest))+'classes/'
 
 if not(os.path.exists(folder)):
-    os.mkdir(folder)
+    os.makedirs(folder)
 
 TOP1 = 0.0
 TOP3 = 0.0
