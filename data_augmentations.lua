@@ -508,13 +508,13 @@ function A.HueJitter(var)
     local angle = torch.random(-var,var) -- shift in hue space (deg)
     local VSU = math.cos(angle*math.pi/180)
     local VSW = math.sin(angle*math.pi/180)
-    output = output or torch.Tensor(input:size()):type(torch.type(input))
+    huejittered = huejittered or torch.Tensor(input:size()):type(torch.type(input))
 
         
-    output[1] = torch.mul(input[1], (.299 + .701*VSU + .168*VSW)):add( torch.mul(input[2], (.587 - .587*VSU + .330*VSW))):add(torch.mul(input[3], (.114 - .114*VSU - .497*VSW)))
-    output[2] = torch.mul(input[1], (.299 - .299*VSU - .328*VSW)):add( torch.mul(input[2], (.587 + .413*VSU + .035*VSW))):add( torch.mul(input[3], (.114 - .114*VSU + .292*VSW)))
-    output[3] = torch.mul(input[1], (.299 - .3*VSU + 1.25*VSW)):add(torch.mul(input[2], (.587 - .588*VSU - 1.05*VSW))):add( torch.mul(input[3], (.114 + .886*VSU - .203*VSW)))
-    return output
+    huejittered[1] = torch.mul(input[1], (.299 + .701*VSU + .168*VSW)):add( torch.mul(input[2], (.587 - .587*VSU + .330*VSW))):add(torch.mul(input[3], (.114 - .114*VSU - .497*VSW)))
+    huejittered[2] = torch.mul(input[1], (.299 - .299*VSU - .328*VSW)):add( torch.mul(input[2], (.587 + .413*VSU + .035*VSW))):add( torch.mul(input[3], (.114 - .114*VSU + .292*VSW)))
+    huejittered[3] = torch.mul(input[1], (.299 - .3*VSU + 1.25*VSW)):add(torch.mul(input[2], (.587 - .588*VSU - 1.05*VSW))):add( torch.mul(input[3], (.114 + .886*VSU - .203*VSW)))
+    return huejittered
     
   end
 end
@@ -574,11 +574,12 @@ function A.GaussianBlur(kw)
     --kernelidx = torch.random(1,table.getn(gaussianblurlayers))
     --print(kernelidx)
     --print(gaussianblurlayers)
+    blurred = blurred or torch.Tensor(input:size()):type(torch.type(input))
     convlayer = gaussianblurlayers[kw]
-    output = convlayer:forward(input)
+    blurred = convlayer:forward(input)
 
     --output = torch.conv2(input, kernel 'F')
-    return output
+    return blurred
   end
 end
 
