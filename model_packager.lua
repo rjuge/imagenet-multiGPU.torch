@@ -23,7 +23,8 @@ model = {}
 --checkpoint = torch.load(opt.m,'b64')
 --convnet = checkpoint.model
 convnet = torch.load(opt.m,'b64')
---convnet:remove()                      keep Softmax
+convnet:remove()
+convnet:add(nn.SoftMax()) --remove LogSoftMax and add SoftMax
 
 if(opt.cudnn == true) then
     convnet = cudnn.convert(convnet, cudnn)

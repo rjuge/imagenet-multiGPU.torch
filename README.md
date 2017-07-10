@@ -4,7 +4,7 @@
 
 ############################################################
 
-##Training an Object Classifier in Torch-7 on multiple GPUs over [ImageNet](http://image-net.org/download-images)
+## Training an Object Classifier in Torch-7 on multiple GPUs over [ImageNet](http://image-net.org/download-images)
 
 In this concise example (1200 lines including a general-purpose and highly scalable data loader for images), we showcase:
 - train [AlexNet](http://papers.nips.cc/paper/4824-imagenet-classification-with-deep-convolutional-neural-networks) or [Overfeat](http://arxiv.org/abs/1312.6229), VGG and Googlenet on ImageNet
