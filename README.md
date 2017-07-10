@@ -1,5 +1,7 @@
 ############################################################
+
 **Fine tunning deprecated, do not use if not working on NIN**
+
 ############################################################
 
 ##Training an Object Classifier in Torch-7 on multiple GPUs over [ImageNet](http://image-net.org/download-images)
