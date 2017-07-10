@@ -8,25 +8,14 @@
 
 function createModel(nGPU)
    local nin = nn.Sequential()
-   local function block3(...)
+   local function block(...)
       local arg = {...}
       local no = arg[2]
       nin:add(nn.SpatialConvolution(...))
-      nin:add(nn.SpatialBatchNormalization(no,1e-3))
       nin:add(nn.ReLU(true))
       nin:add(nn.SpatialConvolution(no, no, 1, 1, 1, 1, 0, 0))
-      nin:add(nn.SpatialBatchNormalization(no,1e-3))
       nin:add(nn.ReLU(true))
       nin:add(nn.SpatialConvolution(no, no, 1, 1, 1, 1, 0, 0))
-      nin:add(nn.SpatialBatchNormalization(no,1e-3))
-      nin:add(nn.ReLU(true))
-   end
-
-   local function block1(...)
-      local arg = {...}
-      local no = arg[2]
-      nin:add(nn.SpatialConvolution(...))
-      nin:add(nn.SpatialBatchNormalization(no,1e-3))
       nin:add(nn.ReLU(true))
    end
 
@@ -34,24 +23,20 @@ function createModel(nGPU)
       nin:add(nn.SpatialMaxPooling(...))
    end
 
-   block3(3, 96, 11, 11, 4, 4, 5, 5)
+   block(3, 96, 11, 11, 4, 4, 5, 5)
    mp(3, 3, 2, 2, 1, 1)
-   block3(96, 256, 5, 5, 1, 1, 2, 2)
+   block(96, 256, 5, 5, 1, 1, 2, 2)
    mp(3, 3, 2, 2, 1, 1)
-   block3(256, 384, 3, 3, 1, 1, 1, 1)
-   mp(3, 3, 2, 2, 1, 1)   
-   block3(384, 1024, 3, 3, 1, 1, 1, 1)
-
-   --block1(384, 384, 3, 3, 1, 1, 1, 1)
-   --block1(384, 384, 1, 1)
-   --block1(384, 331, 1, 1)
+   block(256, 384, 3, 3, 1, 1, 1, 1)
+   mp(3, 3, 2, 2, 1, 1)
+   block(384, 1024, 3, 3, 1, 1, 1, 1)
 
    nin:add(nn.SpatialAveragePooling(7, 7, 1, 1))
    nin:add(nn.View(-1):setNumInputDims(3))
 
    local model = nn.Sequential()
       :add(makeDataParallel(nin, nGPU))
-      :add(nn.Linear(1024,400))
+      :add(nn.Linear(1024,1000))
       :add(nn.LogSoftMax())
 
    model.imageSize = 256

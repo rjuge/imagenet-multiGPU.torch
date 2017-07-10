@@ -7,9 +7,9 @@
 --  of patent rights can be found in the PATENTS file in the same directory.
 --
 require 'optim'
-
+require 'util'
 --[[
-   1. Setup SGD optimization state and learning rate schedule
+   1. Setup  optimization state and learning rate schedule
    2. Create loggers.
    3. train - this function handles the high-level training loop,
               i.e. load data, train model, save model and state to disk
@@ -24,6 +24,9 @@ local optimState = {
     dampening = 0.0,
     weightDecay = opt.weightDecay
 }
+
+print("OptimState Created: ")
+print(optimState.learningRate)
 
 if opt.optimState ~= 'none' then
     assert(paths.filep(opt.optimState), 'File not found: ' .. opt.optimState)
@@ -42,18 +45,19 @@ end
 -- Return values:
 --    diff to apply to optimState,
 --    true IFF this is the first epoch of a new regime
-local function paramsForEpoch(epoch)
+local function paramsConservative(epoch)
     if opt.LR ~= 0.0 then -- if manually specified
         return { }
     end
     local regimes = {
         -- start, end,    LR,   WD,
-        {  1,     18,   1e-2,   5e-4, },
-        { 19,     29,   5e-3,   5e-4  },
-        { 30,     43,   1e-3,   0 },
-        { 44,     52,   5e-4,   0 },
-        { 53,    1e8,   1e-4,   0 },
-    }
+       {  1,     18,     1e-2,   5e-4, },
+       { 19,     29,     5e-3,   5e-4  },
+       { 30,     43,     1e-3,   0 },
+       { 44,     52,     5e-4,   0 },
+       { 53,     1e8,   1e-4,   0 },
+       }
+ 
 
     for _, row in ipairs(regimes) do
         if epoch >= row[1] and epoch <= row[2] then
@@ -62,10 +66,27 @@ local function paramsForEpoch(epoch)
     end
 end
 
+local lr, wd
+local function paramsLinear(epoch)
+--print("inParamsForEpoch")
+--print(epoch)
+--print(opt.LR)
+if opt.LR ~= 0.0 and epoch == 1 then -- if manually specified	
+	lr = opt.LR
+	return { }
+elseif epoch == 1 then
+	lr = 0.1
+	return { learningRate = lr, weightDecay=1e-4 }, true
+elseif epoch > 13 then
+	lr = lr * math.pow( 0.95, epoch - 13) 
+	wd = 0 
+	return { learningRate = lr, weightDecay=wd }, true
+end
+end
+
 -- 2. Create loggers.
-trainLogger = optim.Logger(paths.concat(opt.save, 'train.log'))
 local batchNumber
-local top1_epoch, loss_epoch
+local top1_epoch, top5_epoch, loss_epoch
 
 -- 3. train - this function handles the high-level training loop,
 --            i.e. load data, train model, save model and state to disk
@@ -73,8 +94,9 @@ function train()
    print('==> doing epoch on training data:')
    print("==> online epoch # " .. epoch)
 
-   local params, newRegime = paramsForEpoch(epoch)
-   if newRegime then
+   if opt.regime == 'conservative' then
+      local params, newRegime = paramsConservative(epoch)
+      if newRegime then
       optimState = {
          learningRate = params.learningRate,
          learningRateDecay = 0.0,
@@ -82,7 +104,25 @@ function train()
          dampening = 0.0,
          weightDecay = params.weightDecay
       }
+      end
+   elseif opt.regime == 'linear' then
+      local params, newRegime = paramsLinear(epoch)
+      if newRegime then
+      optimState = {
+         learningRate = params.learningRate,
+         learningRateDecay = 0.0,
+         momentum = opt.momentum,
+         dampening = 0.0,
+         weightDecay = params.weightDecay
+      }
+      end
+   else
+      assert(false, 'Regime not supported!')
    end
+   --print("paramsForEpoch: ")
+   --print("LR: ".. optimState.learningRate)
+   --io.read()   
+   --print(optimState)
    batchNumber = 0
    cutorch.synchronize()
 
@@ -91,6 +131,7 @@ function train()
 
    local tm = torch.Timer()
    top1_epoch = 0
+   top5_epoch = 0
    loss_epoch = 0
    for i=1,opt.epochSize do
       -- queue jobs to data-workers
@@ -98,7 +139,7 @@ function train()
          -- the job callback (runs in data-worker thread)
          function()
             local inputs, labels = trainLoader:sample(opt.batchSize)
-            return inputs, labels
+	    return inputs, labels
          end,
          -- the end callback (runs in the main thread)
          trainBatch
@@ -109,16 +150,14 @@ function train()
    cutorch.synchronize()
 
    top1_epoch = top1_epoch * 100 / (opt.batchSize * opt.epochSize)
+   top5_epoch = top5_epoch * 100 / (opt.batchSize * opt.epochSize)
    loss_epoch = loss_epoch / opt.epochSize
-
-   trainLogger:add{
-      ['% top1 accuracy (train set)'] = top1_epoch,
-      ['avg loss (train set)'] = loss_epoch
-   }
+   
    print(string.format('Epoch: [%d][TRAINING SUMMARY] Total Time(s): %.2f\t'
                           .. 'average loss (per batch): %.2f \t '
-                          .. 'accuracy(%%):\t top-1 %.2f\t',
-                       epoch, tm:time().real, loss_epoch, top1_epoch))
+                          .. 'accuracy(%%):\t top-1 %.2f\t'
+			  .. 'accuracy(%%):\t top-5 %.2f\t',
+                       epoch, tm:time().real, loss_epoch, top1_epoch, top5_epoch))
    print('\n')
 
    -- save model
@@ -126,9 +165,49 @@ function train()
 
    -- clear the intermediate states in the model before saving to disk
    -- this saves lots of disk space
-   model:clearState()
-   saveDataParallel(paths.concat(opt.save, 'model_' .. epoch .. '.t7'), model) -- defined in util.lua
+   if opt.FT ~= 0 then
+      local baseToSave = saveDataParallel(base_model)
+      baseToSave = deepCopy(baseToSave):float():clearState()
+      cudnn.convert(baseToSave,nn)
+      baseToSave = baseToSave:float() 
+
+      local modelToSave = saveDataParallel(model)
+      modelToSave = deepCopy(modelToSave):float():clearState()
+      cudnn.convert(modelToSave,nn)
+      modelToSave = modelToSave:float()
+
+      local mergedModel = nn.Sequential()
+      for _, module in ipairs(modelToSave.modules) do
+	 if torch.type(module)  == 'nn.Sequential' then
+	    for i=1,#module do
+	       baseToSave:add(module:get(i))
+	    end
+	    mergedModel:add(baseToSave)
+	 else
+	    mergedModel:add(module)
+	 end
+      end
+      torch.save(paths.concat(opt.save, 'model_' .. epoch .. '.t7'), mergedModel)
+      
+      baseToSave = nil
+      modelToSave = nil
+      mergedModel = nil
+   else
+      local modelToSave = saveDataParallel(model)
+      modelToSave = deepCopy(modelToSave):float():clearState()
+      cudnn.convert(modelToSave,nn)
+      modelToSave = modelToSave:float()
+      torch.save(paths.concat(opt.save, 'model_' .. epoch .. '.t7'), modelToSave)
+      
+      modelToSave = nil
+   end
+
+   collectgarbage()
+
    torch.save(paths.concat(opt.save, 'optimState_' .. epoch .. '.t7'), optimState)
+
+   return loss_epoch, top1_epoch
+
 end -- of train()
 -------------------------------------------------------------------------------------------
 -- GPU inputs (preallocate)
@@ -143,30 +222,60 @@ local parameters, gradParameters = model:getParameters()
 -- 4. trainBatch - Used by train() to train a single batch after the data is loaded.
 function trainBatch(inputsCPU, labelsCPU)
    cutorch.synchronize()
-   collectgarbage()
+   collectgarbage()	
    local dataLoadingTime = dataTimer:time().real
    timer:reset()
-
+   
    -- transfer over to GPU
    inputs:resize(inputsCPU:size()):copy(inputsCPU)
    labels:resize(labelsCPU:size()):copy(labelsCPU)
-
+   
    local err, outputs
-   feval = function(x)
-      model:zeroGradParameters()
-      outputs = model:forward(inputs)
-      err = criterion:forward(outputs, labels)
-      local gradOutputs = criterion:backward(outputs, labels)
-      model:backward(inputs, gradOutputs)
-      return err, gradParameters
+   if opt.FT ~= 0 then 
+      local inputsFT = torch.CudaTensor()
+      inputsFT = base_model:forward(inputs)
+      feval = function(x)
+	  	model:zeroGradParameters()
+	 	outputs = model:forward(inputsFT)
+	 	err = criterion:forward(outputs, labels)
+	 	local gradOutputs = criterion:backward(outputs, labels)
+	 	model:backward(inputsFT, gradOutputs)
+	 	return err, gradParameters
+      end
+   else
+      feval = function(x)
+	  	model:zeroGradParameters()
+	  	outputs = model:forward(inputs)
+	 	err = criterion:forward(outputs, labels)
+	 	local gradOutputs = criterion:backward(outputs, labels)
+	 	model:backward(inputs, gradOutputs)
+	 	return err, gradParameters
+      end
    end
-   optim.sgd(feval, parameters, optimState)
+
+   if(opt.optimizer == 'sgd') then
+--     print(optimState)
+--     io.read()
+ 	 optim.sgd(feval, parameters, optimState)
+elseif(opt.optimizer == 'adam') then
+     optim.adam(feval, parameters, optimState)
+elseif (opt.optimizer == 'adagrad') then
+     optim.adagrad(feval, parameters, optimState)
+elseif (opt.optimizer == 'nesterov') then
+     optim.nag(feval, parameters, optimState)
+elseif (opt.optimizer == 'rmsprop') then
+     optim.rmsprop(feval, parameters, optimState)
+else
+	error ("Optimizer: " .. opt.optimizer .. " not supported!")
+end
+
 
    cutorch.synchronize()
    batchNumber = batchNumber + 1
    loss_epoch = loss_epoch + err
-   -- top-1 error
+   -- top-1 top-5 errors
    local top1 = 0
+   local top5 = 0
    do
       local _,prediction_sorted = outputs:float():sort(2, true) -- descending
       for i=1,opt.batchSize do
@@ -174,8 +283,13 @@ function trainBatch(inputsCPU, labelsCPU)
 	    top1_epoch = top1_epoch + 1;
 	    top1 = top1 + 1
 	 end
+	 if isTop5(prediction_sorted[i], labelsCPU[i]) == true then
+	    top5_epoch = top5_epoch + 1;
+	    top5 = top5 + 1
+	 end
       end
-      top1 = top1 * 100 / opt.batchSize;
+      top1 = top1 * 100 / opt.batchSize; 
+      top5 = top5 * 100 / opt.batchSize;
    end
    -- Calculate top-1 error, and print information
    print(('Epoch: [%d][%d/%d]\tTime %.3f Err %.4f Top1-%%: %.2f LR %.0e DataLoadingTime %.3f'):format(
@@ -184,3 +298,14 @@ function trainBatch(inputsCPU, labelsCPU)
 
    dataTimer:reset()
 end
+
+function isTop5(X_hat, X)
+   bool = false
+   for i=1,5 do
+      if X_hat[i] == X then
+	 bool=true
+      end
+   end
+   return bool
+end
+

@@ -7,7 +7,14 @@
 --  of patent rights can be found in the PATENTS file in the same directory.
 --
 require 'image'
-paths.dofile('dataset.lua')
+require 'data_augmenter'
+require 'hzproc'
+local c = require 'trepl.colorize'
+local json = require 'json'
+
+tableFromJSON = json.load(opt.classMapping)
+
+paths.dofile('dataset_fast.lua')
 paths.dofile('util.lua')
 
 -- This file contains the data-loading logic and details.
@@ -26,7 +33,6 @@ end
 
 local loadSize   = {3, opt.imageSize, opt.imageSize}
 local sampleSize = {3, opt.cropSize, opt.cropSize}
-
 
 local function loadImage(path)
    local input = image.load(path, 3, 'float')
@@ -47,47 +53,58 @@ local mean,std
    which does class-balanced sampling from the dataset and does a random crop
 --]]
 
+-- data augmenter
+local augmenter = DataAugmenter{nGpu = opt.nGPU}
+
 -- function to load the image, jitter it appropriately (random crops etc.)
 local trainHook = function(self, path)
-   collectgarbage()
-   local input = loadImage(path)
-   local iW = input:size(3)
-   local iH = input:size(2)
 
-   -- do random crop
-   local oW = sampleSize[3]
-   local oH = sampleSize[2]
-   local h1 = math.ceil(torch.uniform(1e-2, iH-oH))
-   local w1 = math.ceil(torch.uniform(1e-2, iW-oW))
-   local out = image.crop(input, w1, h1, w1 + oW, h1 + oH)
-   assert(out:size(3) == oW)
-   assert(out:size(2) == oH)
-   -- do hflip with probability 0.5
-   if torch.uniform() > 0.5 then out = image.hflip(out) end
-   -- mean/std
-   for i=1,3 do -- channels
-      if mean then out[{{i},{},{}}]:add(-mean[i]) end
-      if std then out[{{i},{},{}}]:div(std[i]) end
+   local input = (loadImage(path)):cuda()
+   -- crop 
+   input = augmenter:Crop(input)
+
+   -- do data augmentation with probability opt.PaugTrain
+   if torch.uniform() < opt.PaugTrain then 
+      input = augmenter:Augment(input)
    end
-   return out
+
+   assert(input:size(3) == opt.cropSize, 'image size and opt.cropSize dismatch')
+   assert(input:size(2) == opt.cropSize, 'image size and opt.cropSize dismatch')
+
+   -- mean/std
+   input = augmenter:Normalize(input)
+   return input
 end
 
 if paths.filep(trainCache) then
-   print('Loading train metadata from cache')
+   print(c.blue 'Loading train metadata from cache')
+   --print('TrainCache: ', trainCache)
    trainLoader = torch.load(trainCache)
    trainLoader.sampleHookTrain = trainHook
-   assert(trainLoader.paths[1] == paths.concat(opt.data, 'train'),
-          'cached files dont have the same path as opt.data. Remove your cached files at: '
-             .. trainCache .. ' and rerun the program')
+   --assert(trainLoader.paths[1] == paths.concat(opt.data, 'train'),
+     --     'cached files dont have the same path as opt.data. Remove your cached files at: '
+      --       .. trainCache .. ' and rerun the program')
 else
    print('Creating train metadata')
-   trainLoader = dataLoader{
-      paths = {paths.concat(opt.data, 'train')},
-      loadSize = loadSize,
-      sampleSize = sampleSize,
-      split = 100,
-      verbose = true
-   }
+   if opt.classMapping=='imagenet.json' then
+     trainLoader = dataLoader{
+        paths = {opt.data.."train/"},
+        loadSize = loadSize,
+        sampleSize = sampleSize,
+        split = 100,
+        forceClasses = tableFromJSON,
+        verbose = true
+     }
+   else 
+     trainLoader = dataLoader{
+        paths = {opt.data},
+        loadSize = loadSize,
+        sampleSize = sampleSize,
+        split = 98,
+        forceClasses = tableFromJSON,
+        verbose = true
+     }
+   end
    torch.save(trainCache, trainLoader)
    trainLoader.sampleHookTrain = trainHook
 end
@@ -95,8 +112,10 @@ collectgarbage()
 
 -- do some sanity checks on trainLoader
 do
+   print('Train loader classes and nb of classes:')
    local class = trainLoader.imageClass
    local nClasses = #trainLoader.classes
+   print(nClasses)
    assert(class:max() <= nClasses, "class logic has error")
    assert(class:min() >= 1, "class logic has error")
 
@@ -110,45 +129,59 @@ end
 --]]
 
 -- function to load the image
-testHook = function(self, path)
-   collectgarbage()
-   local input = loadImage(path)
-   local oH = sampleSize[2]
-   local oW = sampleSize[3]
-   local iW = input:size(3)
-   local iH = input:size(2)
-   local w1 = math.ceil((iW-oW)/2)
-   local h1 = math.ceil((iH-oH)/2)
-   local out = image.crop(input, w1, h1, w1+oW, h1+oH) -- center patch
-   -- mean/std
-   for i=1,3 do -- channels
-      if mean then out[{{i},{},{}}]:add(-mean[i]) end
-      if std then out[{{i},{},{}}]:div(std[i]) end
+testHook = function(self, path, pTest) 
+   local input = (loadImage(path)):cuda()
+
+   -- crop
+   input = augmenter:Crop(input)
+
+   -- do data augmentation with probability opt.PaugTest
+   if torch.uniform() < pTest then 
+     input = augmenter:Augment(input)
    end
-   return out
+
+   assert(input:size(3) == opt.cropSize, 'image size and opt.cropSize dismatch')
+   assert(input:size(2) == opt.cropSize, 'image size and opt.cropSize dismatch')
+
+   -- mean/std
+   input = augmenter:Normalize(input)
+   collectgarbage()
+   return input
 end
 
 if paths.filep(testCache) then
    print('Loading test metadata from cache')
    testLoader = torch.load(testCache)
    testLoader.sampleHookTest = testHook
-   assert(testLoader.paths[1] == paths.concat(opt.data, 'val'),
-          'cached files dont have the same path as opt.data. Remove your cached files at: '
-             .. testCache .. ' and rerun the program')
+   --assert(testLoader.paths[1] == paths.concat(opt.data, 'val'),
+     --     'cached files dont have the same path as opt.data. Remove your cached files at: '
+       --      .. testCache .. ' and rerun the program')
 else
    print('Creating test metadata')
-   testLoader = dataLoader{
-      paths = {paths.concat(opt.data, 'val')},
-      loadSize = loadSize,
-      sampleSize = sampleSize,
-      split = 0,
-      verbose = true,
-      forceClasses = trainLoader.classes -- force consistent class indices between trainLoader and testLoader
-   }
+   if opt.classMapping=='imagenet.json' then
+     testLoader = dataLoader{
+        paths = {opt.data.."val/"},
+        loadSize = loadSize,
+        sampleSize = sampleSize,
+        split = 100,
+        forceClasses = tableFromJSON,
+        verbose = true
+     }
+   else 
+     testLoader = dataLoader{
+        paths = {opt.data},
+        loadSize = loadSize,
+        sampleSize = sampleSize,
+        split = 98,
+        forceClasses = tableFromJSON,
+        verbose = true
+     }
+   end
    torch.save(testCache, testLoader)
    testLoader.sampleHookTest = testHook
 end
 collectgarbage()
+
 -- End of test loader section
 
 -- Estimate the per-channel mean/std (so that the loaders can normalize appropriately)

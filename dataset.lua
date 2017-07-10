@@ -92,13 +92,16 @@ function dataset:__init(...)
    -- find class names
    self.classes = {}
    local classPaths = {}
-   if self.forceClasses then
+   if self.forceClasses then      
+      classes_cnt = 0
       for k,v in pairs(self.forceClasses) do
-         self.classes[k] = v
-         classPaths[k] = {}
+         self.classes[tonumber(string.sub(k,6,-1))] = v
+         classPaths[tonumber(string.sub(k,6,-1))] = {}
+	 classes_cnt = classes_cnt + 1
       end
    end
-   local function tableFind(t, o) for k,v in pairs(t) do if v == o then return k end end end
+   --[[
+    local function tableFind(t, o) for k,v in pairs(t) do if v == o then return k end end end
    -- loop over each paths folder, get list of unique class names,
    -- also store the directory paths per class
    -- for each class,
@@ -117,7 +120,13 @@ function dataset:__init(...)
          end
       end
    end
-
+   --]]
+   print('Adding all path folders')
+   for k,_ in pairs(self.forceClasses) do
+      dirpath = opt.data .. k .. '/'
+      classPaths[tonumber(string.sub(k,6,-1))] = dirpath
+   end
+   print(classes_cnt .. ' class names found')
    self.classIndices = {}
    for k,v in ipairs(self.classes) do
       self.classIndices[v] = k
@@ -150,7 +159,7 @@ function dataset:__init(...)
          .. ' those filenames into a single file containing all image paths for a given class')
    -- so, generates one file per class
    local classFindFiles = {}
-   for i=1,#self.classes do
+   for i=1,classes_cnt do
       classFindFiles[i] = os.tmpname()
    end
    local combinedFindList = os.tmpname();
@@ -174,7 +183,7 @@ function dataset:__init(...)
    local tmpfile = os.tmpname()
    local tmphandle = assert(io.open(tmpfile, 'w'))
    -- concat all finds to a single large file in the order of self.classes
-   for i=1,#self.classes do
+   for i=1,classes_cnt do
       local command = 'cat "' .. classFindFiles[i] .. '" >>' .. combinedFindList .. ' \n'
       tmphandle:write(command)
    end
@@ -210,7 +219,7 @@ function dataset:__init(...)
    print('Updating classList and imageClass appropriately')
    self.imageClass:resize(self.numSamples)
    local runningIndex = 0
-   for i=1,#self.classes do
+   for i=1,classes_cnt do
       if self.verbose then xlua.progress(i, #(self.classes)) end
       local length = tonumber(sys.fexecute(wc .. " -l '"
                                               .. classFindFiles[i] .. "' |"
